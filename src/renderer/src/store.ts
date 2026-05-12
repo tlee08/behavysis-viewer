@@ -25,6 +25,15 @@ interface AppState {
   // ── Selection ─────────────────────────────────────────────────────────────
   selectedBoutId: number | null
 
+  // ── Graph Tabs (future) ────────────────────────────────────────────────────
+  // graphTabDefs: { id: string; label: string; seriesIds: string[] }[]
+  // activeGraphTab: string | null
+  // setActiveGraphTab: (tab: string | null) => void
+
+  // ── Annotations (future) ───────────────────────────────────────────────────
+  // annotationMode: 'none' | 'point' | 'rectangle' | 'polygon'
+  // setAnnotationMode: (mode: AppState['annotationMode']) => void
+
   // ── Actions ───────────────────────────────────────────────────────────────
   loadExperiment: (
     paths: ExperimentPaths,

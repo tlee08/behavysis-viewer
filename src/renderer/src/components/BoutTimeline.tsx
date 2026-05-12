@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback } from 'react'
+import { useMantineTheme } from '@mantine/core'
 import { useStore } from '../store'
 import { ACTUAL_COLORS } from '../types'
 
@@ -8,18 +9,16 @@ interface Props {
 
 const ROW_HEIGHT = 24
 const LABEL_WIDTH = 80
-const MARKER_COLOR = '#60a5fa'
 
 export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
   const canvasRef = useRef<HTMLCanvasElement>(null)
   const containerRef = useRef<HTMLDivElement>(null)
+  const theme = useMantineTheme()
 
   const { bouts, currentFrame, visibleRange, config, selectBout, selectedBoutId } =
     useStore()
 
   const fps = config?.fps ?? 15
-
-  // ── rendering ─────────────────────────────────────────────────────────────
 
   const draw = useCallback(() => {
     const canvas = canvasRef.current
@@ -39,7 +38,6 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
 
     const frameToX = (f: number) => LABEL_WIDTH + ((f - xMin) / frameRange) * plotWidth
 
-    // Unique behaviour names (preserve insertion order)
     const behavSet = new Set(bouts.map((b) => b.behav))
     const behavNames = [...behavSet]
     const rowCount = Math.max(behavNames.length, 1)
@@ -50,11 +48,9 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
     behavNames.forEach((behav, rowIdx) => {
       const y = 2 + rowIdx * rowH
 
-      // Label
-      ctx.fillStyle = '#94a3b8'
+      ctx.fillStyle = theme.colors.dark[2]
       ctx.fillText(behav, 4, y + rowH * 0.65)
 
-      // Bouts for this row
       for (const bout of bouts) {
         if (bout.behav !== behav) continue
         if (bout.stop < xMin || bout.start > xMax) continue
@@ -68,28 +64,24 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
         ctx.fillRect(x0, y + 2, x1 - x0, rowH - 4)
         ctx.globalAlpha = 1
 
-        // Highlight selected bout border
         if (bout.id === selectedBoutId) {
-          ctx.strokeStyle = '#fff'
+          ctx.strokeStyle = theme.white
           ctx.lineWidth = 1.5
           ctx.strokeRect(x0, y + 2, x1 - x0, rowH - 4)
         }
       }
     })
 
-    // Time marker
     const markerX = frameToX(currentFrame)
-    ctx.strokeStyle = MARKER_COLOR
+    ctx.strokeStyle = theme.colors.blue[4]
     ctx.lineWidth = 1.5
     ctx.beginPath()
     ctx.moveTo(markerX, 0)
     ctx.lineTo(markerX, canvas.height)
     ctx.stroke()
-  }, [bouts, currentFrame, visibleRange, selectedBoutId, config, height])
+  }, [bouts, currentFrame, visibleRange, selectedBoutId, config, height, theme])
 
   useEffect(() => { draw() }, [draw])
-
-  // ── click to select bout ──────────────────────────────────────────────────
 
   const handleClick = useCallback(
     (e: React.MouseEvent<HTMLCanvasElement>) => {

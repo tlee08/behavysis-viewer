@@ -1,3 +1,4 @@
+import { Paper, Text, Radio, Stack, Checkbox, Group } from '@mantine/core'
 import { useStore } from '../store'
 import type { ActualValue } from '../types'
 import { ACTUAL_COLORS } from '../types'
@@ -14,70 +15,62 @@ export function BoutInspector(): React.ReactElement {
 
   if (!bout) {
     return (
-      <div style={{ padding: 12, color: '#475569', fontSize: 12 }}>
+      <Text c="dark.4" size="xs" p="sm">
         Select a bout to inspect
-      </div>
+      </Text>
     )
   }
 
   return (
-    <div style={{ padding: 8, color: '#e2e8f0', fontSize: 13 }}>
-      <div
-        style={{
-          fontWeight: 600,
-          marginBottom: 8,
-          color: ACTUAL_COLORS[bout.actual],
-          fontFamily: 'monospace',
-        }}
-      >
-        {bout.behav} <span style={{ color: '#64748b' }}>#{bout.id}</span>
-      </div>
+    <Stack gap="xs" p="xs">
+      <Group gap="xs">
+        <Text fw={600} ff="monospace" size="sm" c={ACTUAL_COLORS[bout.actual]}>
+          {bout.behav}
+        </Text>
+        <Text size="sm" c="dimmed">#{bout.id}</Text>
+      </Group>
 
-      {/* IS / NOT / UNSURE */}
-      <fieldset style={{ border: '1px solid #1e293b', borderRadius: 4, padding: '4px 8px', marginBottom: 8 }}>
-        <legend style={{ color: '#94a3b8', fontSize: 11 }}>Scoring</legend>
-        {ACTUAL_OPTIONS.map(({ label, value }) => (
-          <label
-            key={value}
-            style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 4 }}
-          >
-            <input
-              type="radio"
-              name={`actual-${bout.id}`}
-              checked={bout.actual === value}
-              onChange={() => updateBoutActual(bout.id, value)}
-              style={{ accentColor: ACTUAL_COLORS[value] }}
-            />
-            <span style={{ color: ACTUAL_COLORS[value] }}>{label}</span>
-          </label>
-        ))}
-      </fieldset>
-
-      {/* User-defined sub-behaviours (if any) */}
-      {Object.keys(bout.userDefined).length > 0 && (
-        <fieldset style={{ border: '1px solid #1e293b', borderRadius: 4, padding: '4px 8px' }}>
-          <legend style={{ color: '#94a3b8', fontSize: 11 }}>Sub-behaviours</legend>
-          {Object.entries(bout.userDefined).map(([key, val]) => (
-            <label
-              key={key}
-              style={{ display: 'flex', alignItems: 'center', gap: 6, cursor: 'pointer', marginBottom: 4 }}
-            >
-              <input
-                type="checkbox"
-                checked={val === 1}
-                onChange={(e) => updateBoutUserDefined(bout.id, key, e.target.checked ? 1 : 0)}
-                style={{ accentColor: '#22c55e' }}
+      <Paper withBorder p="xs" bg="dark.7">
+        <Text size="xs" c="dark.2" mb={4}>Scoring</Text>
+        <Radio.Group
+          value={bout.actual.toString()}
+          onChange={(v) => updateBoutActual(bout.id, Number(v) as ActualValue)}
+        >
+          <Stack gap={4}>
+            {ACTUAL_OPTIONS.map(({ label, value }) => (
+              <Radio
+                key={value}
+                value={value.toString()}
+                label={label}
+                color={ACTUAL_COLORS[value]}
+                size="xs"
               />
-              <span>{key}</span>
-            </label>
-          ))}
-        </fieldset>
+            ))}
+          </Stack>
+        </Radio.Group>
+      </Paper>
+
+      {Object.keys(bout.userDefined).length > 0 && (
+        <Paper withBorder p="xs" bg="dark.7">
+          <Text size="xs" c="dark.2" mb={4}>Sub-behaviours</Text>
+          <Stack gap={4}>
+            {Object.entries(bout.userDefined).map(([key, val]) => (
+              <Checkbox
+                key={key}
+                label={key}
+                checked={val === 1}
+                onChange={(e) => updateBoutUserDefined(bout.id, key, e.currentTarget.checked ? 1 : 0)}
+                color="green"
+                size="xs"
+              />
+            ))}
+          </Stack>
+        </Paper>
       )}
 
-      {/* Frame range info */}
-      <div style={{ marginTop: 8, color: '#64748b', fontSize: 11, fontFamily: 'monospace' }}>
+      <Text size="xs" c="dimmed" ff="monospace">
         frames {bout.start} – {bout.stop}
-      </div>
-    </div>
+      </Text>
+    </Stack>
   )
 }

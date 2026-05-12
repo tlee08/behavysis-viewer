@@ -1,8 +1,7 @@
 import { Component, type ReactNode } from 'react'
+import { Alert, Code } from '@mantine/core'
 
-interface State {
-  error: Error | null
-}
+interface State { error: Error | null }
 
 export class ErrorBoundary extends Component<
   { children: ReactNode; fallback?: ReactNode },
@@ -16,15 +15,12 @@ export class ErrorBoundary extends Component<
 
   render() {
     if (this.state.error) {
-      return (
-        this.props.fallback ?? (
-          <div style={{ padding: 24, color: '#ef4444', fontFamily: 'monospace', fontSize: 13 }}>
-            <div style={{ fontWeight: 600, marginBottom: 8 }}>Something went wrong</div>
-            <pre style={{ color: '#94a3b8', fontSize: 11, whiteSpace: 'pre-wrap' }}>
-              {this.state.error.message}
-            </pre>
-          </div>
-        )
+      return this.props.fallback ?? (
+        <Alert color="red" title="Something went wrong" variant="light" m="md">
+          <Code block style={{ whiteSpace: 'pre-wrap' }}>
+            {this.state.error.message}
+          </Code>
+        </Alert>
       )
     }
     return this.props.children

@@ -1,4 +1,5 @@
 import { useRef, useEffect, useCallback, useState } from 'react'
+import { Box } from '@mantine/core'
 import { useStore } from '../store'
 
 interface Props {
@@ -25,8 +26,6 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
   const fps = config?.fps ?? 15
   const rvcHandle = useRef<ReturnType<typeof requestVideoFrameCallback>>(0)
 
-  // ── frame tracking ────────────────────────────────────────────────────────
-
   const drawKeypoints = useCallback(
     (frameNum: number) => {
       const canvas = canvasRef.current
@@ -51,7 +50,6 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
     [showKeypoints, keypointFrames, keypointDefs, config],
   )
 
-  // Stash mutable refs so effects can read the latest callbacks without depending on them
   const drawKeypointsRef = useRef(drawKeypoints)
   drawKeypointsRef.current = drawKeypoints
 
@@ -70,8 +68,6 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
   const scheduleRvcRef = useRef(scheduleRvc)
   scheduleRvcRef.current = scheduleRvc
 
-  // ── sync play/pause from store ────────────────────────────────────────────
-
   useEffect(() => {
     const video = videoRef.current
     if (!video) return
@@ -86,8 +82,6 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = vidSpeed
   }, [vidSpeed])
-
-  // ── seek to frame from store ──────────────────────────────────────────────
 
   useEffect(() => {
     const video = videoRef.current
@@ -104,8 +98,6 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
     }
   }, [currentFrame, fps, isPlaying])
 
-  // ── clean up on unmount ───────────────────────────────────────────────────
-
   useEffect(() => {
     return () => {
       videoRef.current?.cancelVideoFrameCallback(rvcHandle.current)
@@ -113,7 +105,11 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
   }, [])
 
   return (
-      <div style={{ position: 'relative', width: '100%', aspectRatio: `${vidDims.w} / ${vidDims.h}`, background: '#111' }}>
+    <Box
+      pos="relative"
+      w="100%"
+      style={{ aspectRatio: `${vidDims.w} / ${vidDims.h}`, background: '#111' }}
+    >
       <video
         ref={videoRef}
         src={videoUrl ?? undefined}
@@ -130,6 +126,6 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
         height={vidDims.h}
         style={{ position: 'absolute', top: 0, left: 0, width: '100%', height: '100%', pointerEvents: 'none' }}
       />
-    </div>
+    </Box>
   )
 }

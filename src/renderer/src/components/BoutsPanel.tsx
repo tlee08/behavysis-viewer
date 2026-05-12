@@ -1,5 +1,6 @@
 import { useRef, useEffect } from 'react'
 import { useVirtualizer } from '@tanstack/react-virtual'
+import { Box, Text } from '@mantine/core'
 import { useStore } from '../store'
 import { ACTUAL_COLORS } from '../types'
 
@@ -30,15 +31,21 @@ export function BoutsPanel(): React.ReactElement {
   }
 
   return (
-    <div ref={parentRef} style={{ overflowY: 'auto', height: '100%', background: '#0f172a', border: '1px solid #1e293b', minWidth: 160 }}>
-      <div style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
+    <Box
+      ref={parentRef}
+      h="100%"
+      bg="dark.7"
+      style={{ overflowY: 'auto', border: '1px solid var(--mantine-color-dark-6)', minWidth: 160 }}
+    >
+      <Box style={{ height: virtualizer.getTotalSize(), position: 'relative' }}>
         {virtualizer.getVirtualItems().map((vItem) => {
           const bout = bouts[vItem.index]
-          const isSelected = bout.id === selectedBoutId
+          const selected = bout.id === selectedBoutId
           return (
-            <div
+            <Box
               key={bout.id}
               onClick={() => handleSelect(bout.id)}
+              bg={selected ? '#1e3a5f' : 'transparent'}
               style={{
                 position: 'absolute',
                 top: 0,
@@ -46,33 +53,27 @@ export function BoutsPanel(): React.ReactElement {
                 width: '100%',
                 height: vItem.size,
                 transform: `translateY(${vItem.start}px)`,
-                padding: '4px 8px',
-                cursor: 'pointer',
-                fontSize: 12,
-                fontFamily: 'monospace',
-                background: isSelected ? '#1e3a5f' : 'transparent',
                 borderLeft: `4px solid ${ACTUAL_COLORS[bout.actual]}`,
-                borderBottom: '1px solid #1e293b',
-                color: '#e2e8f0',
+                borderBottom: '1px solid var(--mantine-color-dark-6)',
+                cursor: 'pointer',
                 userSelect: 'none',
                 display: 'flex',
                 alignItems: 'center',
+                padding: '4px 8px',
               }}
             >
-              <span style={{ color: ACTUAL_COLORS[bout.actual] }}>{bout.behav}</span>
-              {' '}
-              <span style={{ color: '#64748b' }}>#{bout.id}</span>
-              {' '}
-              <span style={{ color: '#475569', fontSize: 10, marginLeft: 'auto' }}>
+              <Text size="xs" c={ACTUAL_COLORS[bout.actual]} ff="monospace">{bout.behav}</Text>
+              <Text size="xs" c="dimmed" ff="monospace" ml={4}>#{bout.id}</Text>
+              <Text size="xs" c="dark.4" ff="monospace" ml="auto">
                 f{bout.start}-{bout.stop}
-              </span>
-            </div>
+              </Text>
+            </Box>
           )
         })}
-      </div>
+      </Box>
       {bouts.length === 0 && (
-        <div style={{ padding: 12, color: '#475569', fontSize: 12 }}>No bouts loaded</div>
+        <Text p="sm" size="xs" c="dark.4">No bouts loaded</Text>
       )}
-    </div>
+    </Box>
   )
 }

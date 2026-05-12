@@ -1,3 +1,4 @@
+import { Group, Button, Text } from '@mantine/core'
 
 interface Props {
   onOpen: () => void
@@ -8,13 +9,19 @@ interface Props {
 
 export function MenuBar({ onOpen, onSave, onSaveJson, status }: Props): React.ReactElement {
   return (
-    <div style={{ display: 'flex', gap: 8, padding: '4px 8px', background: '#1e293b', fontSize: 13, flexShrink: 0 }}>
-      <button className="menu-btn" onClick={onOpen}>Open</button>
-      <button className="menu-btn" onClick={onSave}>Save</button>
-      <button className="menu-btn" onClick={onSaveJson}>Save bouts JSON</button>
-      <span style={{ marginLeft: 'auto', color: '#64748b', fontFamily: 'monospace', fontSize: 11, alignSelf: 'center' }}>
+    <Group gap="xs" px="xs" py={4} bg="dark.6" style={{ flexShrink: 0 }}>
+      <Button variant="subtle" size="xs" onClick={onOpen}>Open</Button>
+      <Button variant="subtle" size="xs" onClick={onSave}>Save</Button>
+      <Button variant="subtle" size="xs" onClick={onSaveJson}>Save bouts JSON</Button>
+
+      <Text
+        size="xs"
+        c="dimmed"
+        ff="monospace"
+        style={{ marginLeft: 'auto', alignSelf: 'center' }}
+      >
         {status}
-      </span>
-    </div>
+      </Text>
+    </Group>
   )
 }

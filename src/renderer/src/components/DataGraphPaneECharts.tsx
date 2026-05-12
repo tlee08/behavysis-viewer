@@ -1,7 +1,9 @@
-import * as echarts from "echarts"
-import { useEffect, useRef } from "react"
-import { useStore } from "../store"
-import type { GraphSeries } from "../types"
+import * as echarts from 'echarts'
+import { useEffect, useRef } from 'react'
+import { Box } from '@mantine/core'
+import { useMantineTheme } from '@mantine/core'
+import { useStore } from '../store'
+import type { GraphSeries } from '../types'
 
 interface Props {
   series: GraphSeries
@@ -14,11 +16,11 @@ export function DataGraphPaneECharts({
 }: Props): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<echarts.ECharts | null>(null)
+  const theme = useMantineTheme()
 
   const { currentFrame, visibleRange, config } = useStore()
   const fps = config?.fps ?? 15
 
-  // init + cleanup
   useEffect(() => {
     const node = containerRef.current
     if (!node) return
@@ -42,7 +44,6 @@ export function DataGraphPaneECharts({
     }
   }, [height])
 
-  // setOption — single unified update for data + viewport + marker
   useEffect(() => {
     const chart = chartRef.current
     if (!chart) return
@@ -59,61 +60,61 @@ export function DataGraphPaneECharts({
       {
         grid: { top: 4, right: 8, bottom: 24, left: 48 },
         xAxis: {
-          type: "value",
+          type: 'value',
           min: xMin,
           max: xMax,
           interval: (xMax - xMin) / 4,
-          axisLine: { lineStyle: { color: "#475569" } },
-          axisTick: { lineStyle: { color: "#475569" } },
+          axisLine: { lineStyle: { color: theme.colors.dark[4] } },
+          axisTick: { lineStyle: { color: theme.colors.dark[4] } },
           axisLabel: {
             margin: 6,
             fontSize: 11,
-            color: "#94a3b8",
+            color: theme.colors.dark[2],
             formatter: (v: number) => `${v.toFixed(1)}s`,
           },
           splitLine: { show: false },
         },
         yAxis: {
-          type: "value",
-          axisLine: { lineStyle: { color: "#475569" } },
-          axisLabel: { fontSize: 9, color: "#64748b" },
-          splitLine: { lineStyle: { color: "#334155", width: 0.5 } },
+          type: 'value',
+          axisLine: { lineStyle: { color: theme.colors.dark[4] } },
+          axisLabel: { fontSize: 9, color: theme.colors.dark[3] },
+          splitLine: { lineStyle: { color: theme.colors.dark[5], width: 0.5 } },
         },
         series: [
           {
-            type: "line",
+            type: 'line',
             data,
             smooth: true,
             showSymbol: false,
             lineStyle: { color: series.color, width: 1.5 },
             areaStyle: {
               color: new echarts.graphic.LinearGradient(0, 0, 0, 1, [
-                { offset: 0, color: series.color + "44" },
-                { offset: 1, color: series.color + "00" },
+                { offset: 0, color: series.color + '44' },
+                { offset: 1, color: series.color + '00' },
               ]),
             },
             markLine: {
               silent: true,
-              symbol: ["none", "none"],
+              symbol: ['none', 'none'],
               label: { show: false },
-              lineStyle: { color: "#60a5fa", width: 2 },
+              lineStyle: { color: theme.colors.blue[4], width: 2 },
               data: [{ xAxis: markerX }],
             },
           },
         ],
-        backgroundColor: "#1a1a2e",
+        backgroundColor: '#1a1a2e',
         animation: false,
       },
       { notMerge: true },
     )
-  }, [series.values, fps, visibleRange, currentFrame])
+  }, [series.values, fps, visibleRange, currentFrame, theme])
 
   return (
-    <div style={{ background: "#1a1a2e", flexShrink: 0 }}>
-      <div style={{ padding: "2px 8px", fontSize: 10, color: "#94a3b8" }}>
+    <Box bg="#1a1a2e" style={{ flexShrink: 0 }}>
+      <Box style={{ padding: '2px 8px', fontSize: 10, color: 'var(--mantine-color-dark-2)' }}>
         {series.label}
-      </div>
-      <div ref={containerRef} style={{ width: "100%", height: `${height}px` }} />
-    </div>
+      </Box>
+      <div ref={containerRef} style={{ width: '100%', height: `${height}px` }} />
+    </Box>
   )
 }

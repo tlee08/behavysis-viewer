@@ -11,6 +11,9 @@
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
+    "@mantine/core": "^7.17.8",
+    "@mantine/hooks": "^7.17.8",
+    "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-virtual": "^3.13.24",
     "apache-arrow": "^17.0.0",
     "echarts": "^6.0.0",
