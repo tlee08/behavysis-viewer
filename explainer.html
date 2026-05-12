@@ -1,0 +1,494 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Behavysis Viewer — Onboarding for Python Data Scientists</title>
+<script src="https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.min.js"></script>
+<style>
+  :root {
+    --bg: #0f172a;
+    --surface: #1e293b;
+    --border: #334155;
+    --text: #e2e8f0;
+    --muted: #64748b;
+    --accent: #38bdf8;
+    --green: #22c55e;
+    --red: #ef4444;
+    --yellow: #eab308;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: var(--bg);
+    color: var(--text);
+    font-family: system-ui, -apple-system, sans-serif;
+    line-height: 1.7;
+    max-width: 860px;
+    margin: 0 auto;
+    padding: 40px 24px;
+  }
+  h1 { font-size: 1.8rem; margin-bottom: 6px; }
+  h2 {
+    font-size: 1.3rem;
+    margin: 40px 0 12px;
+    padding-bottom: 6px;
+    border-bottom: 2px solid var(--border);
+    color: var(--accent);
+  }
+  h3 { font-size: 1.05rem; margin: 24px 0 8px; color: var(--text); }
+  p, li { font-size: 0.95rem; color: var(--text); margin-bottom: 8px; }
+  ul { padding-left: 20px; }
+  code {
+    background: var(--surface);
+    padding: 1px 6px;
+    border-radius: 4px;
+    font-size: 0.88rem;
+    color: var(--accent);
+  }
+  pre {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 14px 16px;
+    overflow-x: auto;
+    font-size: 0.83rem;
+    line-height: 1.6;
+    margin: 10px 0 14px;
+  }
+  pre code { background: none; padding: 0; color: var(--text); }
+  .subtitle { color: var(--muted); font-size: 0.95rem; margin-bottom: 32px; }
+  .mermaid {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 16px;
+    margin: 14px 0 20px;
+    display: flex;
+    justify-content: center;
+  }
+  .mermaid svg { max-width: 100%; }
+  details {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 10px 14px;
+    margin: 10px 0;
+  }
+  details summary { cursor: pointer; color: var(--accent); font-weight: 600; }
+  details[open] summary { margin-bottom: 8px; }
+  .comparison-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 14px 0;
+  }
+  .comparison-table th, .comparison-table td {
+    border: 1px solid var(--border);
+    padding: 8px 12px;
+    text-align: left;
+    font-size: 0.9rem;
+  }
+  .comparison-table th {
+    background: var(--surface);
+    color: var(--accent);
+    font-weight: 600;
+  }
+  .comparison-table td code { font-size: 0.82rem; }
+  .callout {
+    border-left: 3px solid var(--accent);
+    padding: 8px 14px;
+    margin: 14px 0;
+    background: rgba(56,189,248,0.06);
+    border-radius: 0 6px 6px 0;
+    font-size: 0.9rem;
+  }
+  .callout.green { border-left-color: var(--green); background: rgba(34,197,94,0.06); }
+  .callout.yellow { border-left-color: var(--yellow); background: rgba(234,179,8,0.06); }
+  .file-box {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 6px;
+    padding: 12px 16px;
+    margin: 10px 0;
+  }
+  .file-box .path {
+    font-family: monospace;
+    color: var(--accent);
+    font-size: 0.85rem;
+    margin-bottom: 4px;
+  }
+  .file-box .desc { font-size: 0.9rem; }
+  .quiz { margin-top: 10px; }
+  .quiz .q { font-weight: 600; }
+  .quiz .a { color: var(--muted); margin-bottom: 12px; }
+  .toc { line-height: 2; font-size: 0.9rem; }
+  .toc a { color: var(--accent); text-decoration: none; }
+  .toc a:hover { text-decoration: underline; }
+  hr { border: none; border-top: 1px solid var(--border); margin: 32px 0; }
+</style>
+</head>
+<body>
+
+<h1>Behavysis Viewer</h1>
+<p class="subtitle">An onboarding guide for Python data scientists learning TypeScript, React, Zustand, and Electron — explained through the lens of this codebase.</p>
+
+<details class="toc">
+  <summary>Table of contents</summary>
+  <a href="#mental-models">1. Mental Models for Data Scientists</a><br>
+  <a href="#architecture">2. Architecture Diagram</a><br>
+  <a href="#lifecycle">3. Data Lifecycle</a><br>
+  <a href="#build">4. The Build Pipeline (Vite explained)</a><br>
+  <a href="#code-tour">5. Code Tour: The 3 Most Important Files</a><br>
+  <a href="#quiz">6. Self-Check</a>
+</details>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<h2 id="mental-models">1. Mental Models for Data Scientists</h2>
+
+<h3>React Hooks → Data Flow Analogies</h3>
+
+<p>In Python data science, you write <em>procedural</em> scripts: load → transform → plot. React inverts this: you describe what the UI should look like <em>given the current state</em>, and React handles the rest. Hooks are the mechanism that connects state to rendering.</p>
+
+<div class="comparison-table">
+<table>
+<tr><th>Hook</th><th>What it does</th><th>Python analogue</th></tr>
+<tr>
+  <td><code>useState(initial)</code></td>
+  <td>Creates a reactive variable. When its setter is called, the component re-renders.</td>
+  <td>Like an <code>ipywidgets.interact</code> slider — change the value, and everything that depends on it updates automatically. Or like <code>st.session_state</code> in Streamlit.</td>
+</tr>
+<tr>
+  <td><code>useEffect(fn, [deps])</code></td>
+  <td>Runs <code>fn</code> whenever any value in <code>[deps]</code> changes. If <code>[deps]</code> is <code>[]</code>, runs once on mount. The returned function cleans up on unmount.</td>
+  <td>Like an Excel cell formula that auto-recalculates when its referenced cells change. Or a Jupyter cell you re-run manually — but automated.</td>
+</tr>
+<tr>
+  <td><code>useCallback(fn, [deps])</code></td>
+  <td>Memoizes a function so it doesn't get recreated on every render (only when deps change).</td>
+  <td>Like <code>functools.lru_cache</code> for function identity — prevents unnecessary recomputation in child components.</td>
+</tr>
+<tr>
+  <td><code>useRef(initial)</code></td>
+  <td>Mutable box that persists across renders without triggering re-renders.</td>
+  <td>Like a module-level variable or a <code>global</code> — a value you can mutate without triggering side effects.</td>
+</tr>
+</table>
+</div>
+
+<div class="callout">
+<strong>Concrete example from this repo</strong> (<code>useExperimentIO.ts:7-20</code>):<br><br>
+<code>const [videoUrl, setVideoUrl] = useState&lt;string | null&gt;(null)</code> — <em>one</em> reactive variable controls whether a video player renders.<br>
+<code>useEffect(() => { return () => { revokeObjectURL(...) } }, [])</code> — runs <em>once</em> on mount; the returned cleanup revokes the blob URL when the component unmounts.<br>
+<code>const blobUrlRef = useRef&lt;string | null&gt;(null)</code> — stores the current blob URL without causing re-renders every time it changes.
+</div>
+
+<h3>Zustand Store → Global State Dictionary / DataFrame</h3>
+
+<p>In Python, you might keep a global <code>dict</code> or <code>pandas.DataFrame</code> that multiple functions read and mutate. Zustand is that concept, formalized.</p>
+
+<div class="comparison-table">
+<table>
+<tr><th>Concept</th><th>Python (DS stack)</th><th>Zustand (this app)</th></tr>
+<tr>
+  <td>Store definition</td>
+  <td><code>state = {'bouts': [], 'currentFrame': 0}</code></td>
+  <td><code>create&lt;AppState&gt;((set) => ({ bouts: [], currentFrame: 0, ... }))</code></td>
+</tr>
+<tr>
+  <td>Read a value</td>
+  <td><code>state['bouts']</code></td>
+  <td><code>useStore(s => s.bouts)</code> in a component, or <code>useStore.getState().bouts</code> outside one</td>
+</tr>
+<tr>
+  <td>Mutate a value</td>
+  <td><code>state['bouts'][i]['actual'] = 1</code></td>
+  <td><code>updateBoutActual(id, 1)</code> — an <em>action</em> defined in the store that calls <code>set(...)</code></td>
+</tr>
+<tr>
+  <td>React to changes</td>
+  <td>Manually re-run cells / callbacks</td>
+  <td>Automatic: any component using <code>useStore(selector)</code> re-renders when the selected slice changes</td>
+</tr>
+</table>
+</div>
+
+<div class="callout yellow">
+<strong>Key insight:</strong> Unlike React Context, Zustand has <em>no Provider wrapper</em>. Import the store hook anywhere and it just works. You can also call <code>useStore.getState()</code> or <code>useStore.subscribe(callback)</code> outside React components — no hook needed. This is how <code>useKeyboardShortcuts.ts</code> reads store state from a vanilla <code>addEventListener</code> handler.
+</div>
+
+<h3>TypeScript Types → Schema Validation for Code</h3>
+
+<p>Think of TypeScript types as running <code>df.dtypes</code> or schema validation <em>before your code executes</em>.</p>
+
+<div class="comparison-table">
+<table>
+<tr><th>Python (runtime check)</th><th>TypeScript (compile-time check)</th></tr>
+<tr>
+  <td><code>assert isinstance(row['id'], int)</code></td>
+  <td><code>interface Bout { id: number }</code> — caught at build time, before you ever run</td>
+</tr>
+<tr>
+  <td><code>pd.DataFrame.astype({'start': 'int64'})</code></td>
+  <td><code>start: number</code> — the compiler rejects <code>bout.start = "hello"</code></td>
+</tr>
+<tr>
+  <td><code>pyarrow.schema([pa.field('actual', pa.int8())])</code></td>
+  <td><code>actual: ActualValue</code> where <code>type ActualValue = -1 | 0 | 1</code> — a <em>union literal type</em></td>
+</tr>
+</table>
+</div>
+
+<div class="callout green">
+<strong>Concrete example from this repo</strong> (<code>types.ts:8</code>):<br><br>
+<code>export type ActualValue = -1 | 0 | 1</code><br><br>
+This is a <em>literal union type</em>. The compiler guarantees no value other than -1, 0, or 1 can ever be assigned to an <code>actual</code> field. The <code>clampActual</code> function in <code>bouts.ts:57-61</code> is a runtime safety net, but the type system catches most mistakes <em>at build time</em>.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<h2 id="architecture">2. Architecture Diagram</h2>
+
+<p>Electron apps have <strong>three process layers</strong>. This is the most important architectural concept — it's why the code is split across <code>src/main/</code>, <code>src/preload/</code>, and <code>src/renderer/</code>.</p>
+
+<div class="mermaid">
+graph TB
+    subgraph MAIN["🖥 Main Process — Node.js"]
+        direction TB
+        IPC["ipc.ts<br/><i>ipcMain.handle()</i><br/>open-file, read-file, write-file,<br/>read-json, write-json, get-video-url"]
+        INDEX["index.ts<br/><i>BrowserWindow</i><br/>Creates window, loads renderer URL"]
+    end
+
+    subgraph PRELOAD["🔌 Preload Bridge — contextBridge"]
+        CB["preload/index.ts<br/><i>contextBridge.exposeInMainWorld('electron', api)</i><br/>Typed as ElectronAPI interface"]
+    end
+
+    subgraph RENDERER["🖼 Renderer Process — Chromium + React + Vite"]
+        direction TB
+        APP["App.tsx<br/><i>Layout + keyboard shortcuts + file I/O orchestration</i>"]
+        STORE["store.ts<br/><i>Zustand — single source of truth</i>"]
+        HOOKS["useExperimentIO.ts<br/><i>File open/save workflow</i>"]
+        HOOKS2["useKeyboardShortcuts.ts<br/><i>Key bindings via subscribe()</i>"]
+        PARSE["parseParquet.ts<br/><i>WASM parquet → Arrow table</i>"]
+        BOUTS["bouts.ts<br/><i>Frames → bouts (run-length encoding)</i>"]
+        COMPONENTS["BoutInspector, VideoPane, BoutTimeline,<br/>BoutsPanel, PlaybackBar, DataGraphPane..."]
+    end
+
+    DISK["💾 Disk<br/><i>.parquet, .mp4, .json</i>"]
+
+    MAIN -->|"readFileSync / writeFileSync"| DISK
+    RENDERER -->|"ipcRenderer.invoke('read-file', path)"| PRELOAD
+    PRELOAD -->|"ipcMain.handle('read-file', ...)"| MAIN
+
+    APP --> STORE
+    APP --> HOOKS
+    APP --> HOOKS2
+    HOOKS --> PARSE
+    PARSE --> BOUTS
+    HOOKS --> STORE
+    COMPONENTS --> STORE
+</div>
+
+<div class="callout">
+<strong>Why three layers?</strong> The main process has full Node.js access (filesystem, OS dialogs) but renders <em>no UI</em>. The renderer process is a Chromium browser — it renders React but is sandboxed; it cannot touch the filesystem directly. The preload bridge is a narrow, typed API surface connecting the two. This is a security pattern: the renderer can only call the 6 IPC methods defined in <code>ipc.ts</code>.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<h2 id="lifecycle">3. Data Lifecycle</h2>
+
+<h3>3a. User scores a bout → UI updates</h3>
+
+<div class="mermaid">
+graph LR
+    CLICK["👆 Click IS/NOT/UNSURE<br/>radio button"]
+    ONCHANGE["BoutInspector onChange<br/><code>updateBoutActual(id, 1)</code>"]
+    SET["<code>store.setState()</code><br/>Maps over bouts array,<br/>replaces matching bout"]
+    RERENDER["React re-renders all components<br/>that called <code>useStore()</code><br/>with the changed slice"]
+
+    CLICK --> ONCHANGE --> SET --> RERENDER
+
+    RERENDER --> T1["BoutTimeline<br/>canvas repaints<br/>bout bar colour"]
+    RERENDER --> T2["BoutsPanel<br/>list item shows<br/>new colour + icon"]
+    RERENDER --> T3["BoutInspector<br/>radio updates<br/>checked state"]
+</div>
+
+<div class="callout">
+<strong>What actually happens in the store</strong> (<code>store.ts:99-103</code>):
+<pre><code>updateBoutActual: (id, actual) =>
+  set((s) => ({
+    bouts: s.bouts.map((b) => (b.id === id ? { ...b, actual } : b)),
+  })),</code></pre>
+This is an <strong>immutable update</strong>: it creates a new bouts array with one element replaced, using the spread operator. React detects the reference change and re-renders. The original data is never mutated in-place — similar to <code>df.copy()</code> before modification.
+</div>
+
+<h3>3b. File Open → Load → Save cycle</h3>
+
+<div class="mermaid">
+graph TB
+    subgraph OPEN["📂 Opening an experiment"]
+        O1["File > Open"] --> O2["<code>window.electron.openFile()</code>"]
+        O2 --> O3["IPC: 'open-file'"]
+        O3 --> O4["Main: dialog.showOpenDialog()<br/>Returns config .json path"]
+        O4 --> O5["Resolve paths<br/><code>fileManager.resolveExperimentPaths()</code>"]
+        O5 --> O6A["<code>readFile(videoPath)</code><br/>→ Blob → URL.createObjectURL"]
+        O5 --> O6B["<code>readFile(behavsPath)</code><br/>→ parseBehavParquet()"]
+        O5 --> O6C["<code>readFile(keypointsPath)</code><br/>→ parseKeypointsParquet()"]
+        O6B --> O7["<code>framesToBouts()</code><br/>Run-length encoding"]
+        O6A --> O8["<code>setVideoUrl(blobUrl)</code>"]
+        O7 --> O9["<code>loadExperiment(...)</code><br/>Populates Zustand store"]
+        O6C --> O9
+        O8 --> O10["VideoPane renders player"]
+        O9 --> O11["BoutTimeline + BoutsPanel render"]
+    end
+
+    subgraph SAVE["💾 Saving scored bouts"]
+        S1["File > Save"] --> S2["Read <code>bouts</code> from store"]
+        S2 --> S3["<code>boutsToBehavParquet(bouts, rawTable)</code>"]
+        S3 --> S4["Reconstruct per-frame columns,<br/>write into Arrow table copy,<br/>WASM → parquet bytes"]
+        S4 --> S5["<code>window.electron.writeFile(path, bytes)</code>"]
+        S5 --> S6["IPC: 'write-file'"]
+        S6 --> S7["Main: writeFileSync(path, bytes)"]
+        S7 --> S8["✅ Parquet file on disk"]
+    end
+</div>
+
+<div class="callout green">
+<strong>Why the save works this way:</strong> The app preserves the <em>original</em> Arrow table schema (including pandas MultiIndex tuple column names like <code>"('attack', 'actual')"</code>). It copies the original table, only overwriting the scored columns for frames within each bout. This means the Python pipeline can read the file back without any format conversion — the column names and structure are identical to what pandas wrote.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<h2 id="build">4. The Build Pipeline</h2>
+
+<p>When you run <code>pnpm dev</code> or <code>pnpm build</code>, <strong>electron-vite</strong> (a wrapper around Vite) processes your source code. This is necessary because browsers (and Electron's renderer) cannot run TypeScript, JSX, or bare <code>import</code> statements natively.</p>
+
+<h3>What Vite does, step by step</h3>
+
+<div class="comparison-table">
+<table>
+<tr><th>Step</th><th>What happens</th><th>Python analogy</th></tr>
+<tr>
+  <td><strong>1. Transpile</strong></td>
+  <td>TS → JS (strips types)<br>JSX → <code>React.createElement()</code> calls</td>
+  <td>Like Cython compiling <code>.pyx</code> → <code>.c</code>, or mypy stripping type annotations before execution</td>
+</tr>
+<tr>
+  <td><strong>2. Resolve imports</strong></td>
+  <td>Converts bare specifiers (<code>import 'react'</code>) to actual file paths in <code>node_modules</code></td>
+  <td>Like Python's <code>sys.path</code> resolution — finding which <code>site-packages</code> folder contains the module</td>
+</tr>
+<tr>
+  <td><strong>3. Bundle</strong></td>
+  <td>Combines hundreds of <code>.ts/.tsx</code> files into a few <code>.js</code> chunks</td>
+  <td>Like PyInstaller packing all <code>.py</code> files + dependencies into a single executable. Or pip's <code>--target</code> flattening into one folder</td>
+</tr>
+<tr>
+  <td><strong>4. WASM handling</strong></td>
+  <td><code>vite-plugin-wasm</code> loads <code>.wasm</code> files; <code>topLevelAwait</code> plugin enables async wasm initialization</td>
+  <td>Like loading a <code>.pyd</code> or <code>.so</code> native extension in Python</td>
+</tr>
+<tr>
+  <td><strong>5. Dev server (HMR)</strong></td>
+  <td>Watches files, hot-replaces changed modules in the browser <em>without</em> full page reload</td>
+  <td>Like Flask's debug mode auto-reload, but surgically replacing only the changed module instead of restarting the whole process</td>
+</tr>
+<tr>
+  <td><strong>6. Output</strong></td>
+  <td>Writes <code>out/main/index.js</code>, <code>out/preload/index.js</code>, <code>out/renderer/</code> (HTML + JS + CSS)</td>
+  <td>Like <code>python setup.py build</code> producing a <code>dist/</code> folder</td>
+</tr>
+</table>
+</div>
+
+<h3>This project's Vite config (simplified)</h3>
+
+<pre><code>// electron.vite.config.ts
+export default defineConfig({
+  main:    { plugins: [externalizeDepsPlugin()] },            // Node.js — keep deps external
+  preload: { plugins: [externalizeDepsPlugin()] },            // Bridge — same treatment
+  renderer: {
+    plugins: [react(), wasm(), topLevelAwait()],              // Browser — React + WASM
+    optimizeDeps: { exclude: ['parquet-wasm'] },              // Don't pre-bundle parquet-wasm
+  },
+})</code></pre>
+
+<div class="callout yellow">
+<strong>Why <code>exclude: ['parquet-wasm']</code>?</strong> <code>parquet-wasm</code> contains a WebAssembly binary. Vite's dependency optimizer would try to pre-bundle it, which breaks the WASM initialization. Excluding it tells Vite to leave it as-is and let the <code>wasm()</code> plugin handle it at runtime. This is the same reason you'd use <code>--no-binary</code> with pip for packages that need to compile from source.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<h2 id="code-tour">5. Code Tour: The 3 Most Important Files</h2>
+
+<div class="file-box">
+  <div class="path">src/renderer/src/hooks/useExperimentIO.ts</div>
+  <div class="desc">
+    <strong>The file I/O orchestrator.</strong> This custom hook combines <code>useState</code>, <code>useCallback</code>, <code>useRef</code>, and <code>useEffect</code> to manage the entire open/save workflow — from picking a config file through parsing parquet with WASM to loading the Zustand store. It also handles video blob URL lifecycle (create on open, revoke on unmount), which is why the app no longer needs <code>webSecurity: false</code>.
+  </div>
+</div>
+
+<div class="file-box">
+  <div class="path">src/renderer/src/store.ts</div>
+  <div class="desc">
+    <strong>The single source of truth.</strong> A Zustand store holding all application state: bouts, keypoints, playback position, selection, and display toggles. Every component reads from it via <code>useStore(selector)</code>, and every mutation goes through typed actions defined here (<code>updateBoutActual</code>, <code>selectBout</code>, <code>panToFrame</code>). The <code>centerVisibleRange</code> helper is a good example of derived state — it computes the visible window from the current frame.
+  </div>
+</div>
+
+<div class="file-box">
+  <div class="path">src/main/ipc.ts</div>
+  <div class="desc">
+    <strong>The cleanest file in the codebase.</strong> Six IPC handlers that do nothing but read/write files and return raw bytes to the renderer. There is zero data parsing here — the main process has no idea what a "bout" or "keypoint" is. This separation means all the logic lives in one process (the renderer), making the data flow easy to trace: disk → main (raw bytes) → preload (passthrough) → renderer (parse → store → UI).
+  </div>
+</div>
+
+<div class="callout">
+<strong>Honorable mention: <code>src/renderer/src/lib/parseParquet.ts</code></strong><br>
+The data science heart of the app. Converts parquet bytes → WASM → Apache Arrow Table → per-frame maps → bouts (via run-length encoding in <code>bouts.ts</code>). Handles pandas-style 2-level and 4-level MultiIndex tuple column names (e.g., <code>"('attack', 'actual')"</code>) with regex parsing. The save path does the reverse — reconstructs a valid parquet with the original schema intact.
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════════════════ -->
+
+<h2 id="quiz">6. Self-Check</h2>
+
+<p>Test your understanding. Click each question to reveal the answer.</p>
+
+<details>
+  <summary>Where does parquet parsing happen — in the main process or the renderer?</summary>
+  <p>The <strong>renderer</strong>. The main process (<code>ipc.ts</code>) only reads raw file bytes via <code>readFileSync</code> and returns them as <code>Uint8Array</code>. <code>parseParquet.ts</code> in the renderer then calls <code>parquet-wasm</code> (a WebAssembly library) to parse those bytes into an Apache Arrow table. This design keeps all data logic in one process.</p>
+</details>
+
+<details>
+  <summary>If I want to add a new keyboard shortcut, which file do I edit?</summary>
+  <p><strong><code>useKeyboardShortcuts.ts</code></strong>. It subscribes to the Zustand store directly (not via the React hook) so it runs in a vanilla <code>keydown</code> event listener. Add a new <code>case</code> in the switch statement, call an action from <code>useStore.getState()</code>, and you're done. No component changes needed — the store actions update state, and subscribed components re-render automatically.</p>
+</details>
+
+<details>
+  <summary>Why do we need <code>pnpm-workspace.yaml</code> with <code>allowBuilds</code>?</summary>
+  <p>Packages like <code>electron</code>, <code>esbuild</code>, and <code>@swc/core</code> ship native binaries that must be compiled or downloaded for your platform during <code>pnpm install</code>. The <code>allowBuilds</code> list tells pnpm "yes, these packages are allowed to run their postinstall scripts." Without it, pnpm would block them and the native modules would be missing — Electron wouldn't launch, and Vite's internal bundler (esbuild) would fail.</p>
+</details>
+
+<hr>
+
+<p style="color: var(--muted); font-size: 0.8rem; text-align: center;">
+  Built from the <a href="https://github.com/tlee08/behavysis-viewer" style="color: var(--accent);">Behavysis Viewer</a> codebase.
+  Diagrams rendered with <a href="https://mermaid.js.org" style="color: var(--accent);">Mermaid.js</a>.
+</p>
+
+<script>
+mermaid.initialize({
+  startOnLoad: true,
+  theme: 'dark',
+  themeVariables: {
+    primaryColor: '#1e293b',
+    primaryBorderColor: '#334155',
+    primaryTextColor: '#e2e8f0',
+    lineColor: '#64748b',
+    secondaryColor: '#0f172a',
+    tertiaryColor: '#1e293b',
+  },
+  flowchart: { useMaxWidth: true, htmlLabels: true, curve: 'basis' },
+});
+</script>
+
+</body>
+</html>

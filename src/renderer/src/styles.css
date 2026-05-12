@@ -1,0 +1,53 @@
+:root {
+  --bg-primary: #0f172a;
+  --bg-panel: #1e293b;
+  --bg-input: #334155;
+  --text-primary: #e2e8f0;
+  --text-muted: #64748b;
+  --text-dim: #94a3b8;
+  --border: #334155;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  font-family: system-ui, -apple-system, sans-serif;
+  background: #0f172a;
+  color: #e2e8f0;
+  overflow: hidden;
+}
+
+button.menu-btn {
+  background: #334155;
+  color: #e2e8f0;
+  border: 1px solid #475569;
+  border-radius: 4px;
+  padding: 3px 10px;
+  font-size: 13px;
+  cursor: pointer;
+}
+button.menu-btn:hover { background: #475569; }
+
+button.ctrl-btn {
+  background: #1e293b;
+  color: #e2e8f0;
+  border: 1px solid #334155;
+  border-radius: 4px;
+  padding: 3px 8px;
+  font-size: 13px;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+button.ctrl-btn:hover { background: #334155; }
+
+input[type="range"] {
+  accent-color: #60a5fa;
+}
+
+/* uplot overrides for dark theme */
+.uplot .u-legend { display: none; }
+.uplot .u-over { cursor: default; }

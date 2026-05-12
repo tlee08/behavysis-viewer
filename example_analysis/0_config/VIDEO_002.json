@@ -1,0 +1,166 @@
+{
+  "user": {
+    "format_vid": {
+      "width_px": 960,
+      "height_px": 540,
+      "fps": 15.0,
+      "start_sec": null,
+      "stop_sec": null
+    },
+    "run_dlc": {
+      "model_fp": "/mnt/research-data/PRJ-BowenLab/dlc_models/social_direct/social_direct_white_mice_960x540px_2025/config-linux.yaml"
+    },
+    "calculate_params": {
+      "from_likelihood": {
+        "bodyparts": "--bpts_simba",
+        "window_sec": 1.0,
+        "pcutoff": 0.8
+      },
+      "start_frame_from_csv": {
+        "csv_fp": "path_to/start_times.csv",
+        "name": null
+      },
+      "stop_frame_from_dur": {
+        "dur_sec": 900.0
+      },
+      "px_per_mm": {
+        "pt_a": "TopLeft",
+        "pt_b": "TopRight",
+        "pcutoff": 0.5,
+        "dist_mm": 400.0
+      }
+    },
+    "preprocess": {
+      "interpolate": {
+        "pcutoff": 0.5
+      },
+      "interpolate_stationary": [],
+      "refine_ids": {
+        "marked": "mouse1marked",
+        "unmarked": "mouse2unmarked",
+        "marking": "AnimalColourMark",
+        "bodyparts": "--bpts_centre",
+        "window_sec": 0.5,
+        "metric": "rolling"
+      }
+    },
+    "extract_features": {
+      "individuals": "--indivs_simba",
+      "bodyparts": "--bpts_simba"
+    },
+    "classify_behavs": [
+      {
+        "proj_dir": "/mnt/research-data/PRJ-BowenLab/behavysis_models/aggression",
+        "behav_name": "aggression",
+        "pcutoff": -1.0,
+        "min_empty_window_secs": 0.2,
+        "user_defined": [
+          "mouse1marked_attack",
+          "mouse2unmarked_attack"
+        ]
+      }
+    ],
+    "analyse": {
+      "bins_sec": [
+        30,
+        60,
+        120
+      ],
+      "custom_bins_sec": [
+        60,
+        120,
+        300,
+        600,
+        900
+      ],
+      "speed": {
+        "smoothing_sec": 1.0,
+        "bodyparts": "--bpts_centre"
+      },
+      "social_distance": {
+        "smoothing_sec": 1.0,
+        "bodyparts": "--bpts_centre"
+      },
+      "freezing": {
+        "window_sec": 2.0,
+        "thresh_mm": 5.0,
+        "smoothing_sec": 0.2,
+        "bodyparts": "--bpts_centre"
+      },
+      "in_roi": [
+        {
+          "roi_name": "thigmo",
+          "is_in": false,
+          "padding_mm": -5.0,
+          "roi_corners": "--bpts_corners",
+          "bodyparts": "--bpts_front"
+        }
+      ]
+    },
+    "evaluate_vid": {
+      "funcs": [
+        "keypoints",
+        "analysis"
+      ],
+      "pcutoff": 0.8,
+      "colour_level": "individuals",
+      "radius": 3,
+      "cmap": "rainbow",
+      "padding": 30
+    }
+  },
+  "auto": {
+    "raw_vid": {
+      "width_px": 432,
+      "height_px": 320,
+      "fps": 10.001169249453328,
+      "total_frames": 14195
+    },
+    "formatted_vid": {
+      "width_px": 960,
+      "height_px": 540,
+      "fps": 15.0,
+      "total_frames": 21290
+    },
+    "px_per_mm": 0.9825658168640792,
+    "start_frame": 1785,
+    "stop_frame": 15285,
+    "dur_frames": 13468
+  },
+  "ref": {
+    "indivs_simba": [
+      "mouse1marked",
+      "mouse2unmarked"
+    ],
+    "bpts_simba": [
+      "LeftEar",
+      "RightEar",
+      "Nose",
+      "BodyCentre",
+      "LeftFlankMid",
+      "RightFlankMid",
+      "TailBase1",
+      "TailTip4"
+    ],
+    "bpts_centre": [
+      "LeftFlankMid",
+      "BodyCentre",
+      "RightFlankMid",
+      "LeftFlankRear",
+      "RightFlankRear",
+      "TailBase1"
+    ],
+    "bpts_front": [
+      "LeftEar",
+      "RightEar",
+      "Nose",
+      "BodyCentre"
+    ],
+    "bpts_corners": [
+      "TopLeft",
+      "TopRight",
+      "BottomRight",
+      "BottomLeft"
+    ]
+  }
+}
