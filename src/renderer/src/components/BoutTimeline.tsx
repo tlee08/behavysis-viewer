@@ -1,126 +1,139 @@
-import { useRef, useEffect, useCallback } from 'react'
-import { useMantineTheme } from '@mantine/core'
-import { useStore } from '../store'
-import { ACTUAL_COLORS } from '../types'
+import { Box, useMantineTheme } from "@mantine/core";
+import { useEffect, useRef } from "react";
+import { useECharts } from "../hooks/useECharts";
+import { useStore } from "../store";
+import { ACTUAL_COLORS } from "../types";
 
 interface Props {
-  height?: number
+  height?: number;
 }
 
-const ROW_HEIGHT = 24
-const LABEL_WIDTH = 80
+const ROW_HEIGHT = 24;
 
 export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
-  const canvasRef = useRef<HTMLCanvasElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
-  const theme = useMantineTheme()
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useECharts(containerRef, height);
+  const selectBoutRef = useRef(useStore.getState().selectBout);
+  const theme = useMantineTheme();
+  const {
+    bouts,
+    selectBout,
+    selectedBoutId,
+    visibleRange,
+    config,
+  } = useStore();
+  const fps = config?.fps ?? 15;
+  const xMin = visibleRange[0] / fps;
+  const xMax = visibleRange[1] / fps;
 
-  const { bouts, currentFrame, visibleRange, config, selectBout, selectedBoutId } =
-    useStore()
+  selectBoutRef.current = selectBout;
 
-  const fps = config?.fps ?? 15
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart) return;
 
-  const draw = useCallback(() => {
-    const canvas = canvasRef.current
-    const container = containerRef.current
-    const ctx = canvas?.getContext('2d')
-    if (!canvas || !ctx || !container) return
-
-    const width = container.clientWidth
-    canvas.width = width
-    canvas.height = height
-    ctx.fillStyle = '#1a1a2e'
-    ctx.fillRect(0, 0, canvas.width, canvas.height)
-
-    const [xMin, xMax] = visibleRange
-    const frameRange = xMax - xMin
-    const plotWidth = canvas.width - LABEL_WIDTH
-
-    const frameToX = (f: number) => LABEL_WIDTH + ((f - xMin) / frameRange) * plotWidth
-
-    const behavSet = new Set(bouts.map((b) => b.behav))
-    const behavNames = [...behavSet]
-    const rowCount = Math.max(behavNames.length, 1)
-    const rowH = Math.min(ROW_HEIGHT, (canvas.height - 4) / rowCount)
-
-    ctx.font = '11px monospace'
-
-    behavNames.forEach((behav, rowIdx) => {
-      const y = 2 + rowIdx * rowH
-
-      ctx.fillStyle = theme.colors.dark[2]
-      ctx.fillText(behav, 4, y + rowH * 0.65)
-
-      for (const bout of bouts) {
-        if (bout.behav !== behav) continue
-        if (bout.stop < xMin || bout.start > xMax) continue
-
-        const x0 = Math.max(frameToX(bout.start), LABEL_WIDTH)
-        const x1 = Math.min(frameToX(bout.stop + 1), canvas.width)
-        if (x1 <= x0) continue
-
-        ctx.fillStyle = ACTUAL_COLORS[bout.actual]
-        ctx.globalAlpha = bout.id === selectedBoutId ? 1 : 0.75
-        ctx.fillRect(x0, y + 2, x1 - x0, rowH - 4)
-        ctx.globalAlpha = 1
-
-        if (bout.id === selectedBoutId) {
-          ctx.strokeStyle = theme.white
-          ctx.lineWidth = 1.5
-          ctx.strokeRect(x0, y + 2, x1 - x0, rowH - 4)
-        }
+    chart.on("click", { element: "bout-bar" }, (params: any) => {
+      if (params.info !== undefined) {
+        selectBoutRef.current(params.info);
       }
-    })
+    });
+  }, []);
 
-    const markerX = frameToX(currentFrame)
-    ctx.strokeStyle = theme.colors.blue[4]
-    ctx.lineWidth = 1.5
-    ctx.beginPath()
-    ctx.moveTo(markerX, 0)
-    ctx.lineTo(markerX, canvas.height)
-    ctx.stroke()
-  }, [bouts, currentFrame, visibleRange, selectedBoutId, config, height, theme])
+  useEffect(() => {
+    const chart = chartRef.current;
+    if (!chart || bouts.length === 0) {
+      chart?.clear();
+      return;
+    }
 
-  useEffect(() => { draw() }, [draw])
+    const behavNames = [...new Set(bouts.map((b) => b.behav))];
+    const data = bouts.map((b) => [
+      b.start / fps,
+      (b.stop + 1) / fps,
+      b.behav,
+      ACTUAL_COLORS[b.actual],
+      b.id,
+      b.id === selectedBoutId ? 1 : 0,
+    ]);
 
-  const handleClick = useCallback(
-    (e: React.MouseEvent<HTMLCanvasElement>) => {
-      const canvas = canvasRef.current
-      if (!canvas || bouts.length === 0) return
+    chart.setOption(
+      {
+        grid: { top: 4, right: 8, bottom: 24, left: 72 },
+        xAxis: {
+          type: "value",
+          min: xMin,
+          max: xMax,
+          interval: (xMax - xMin) / 4,
+          axisLine: { lineStyle: { color: theme.colors.dark[4] } },
+          axisTick: { show: true, lineStyle: { color: theme.colors.dark[4] } },
+          axisLabel: {
+            show: true,
+            color: theme.colors.dark[2],
+            fontSize: 11,
+            formatter: (v: number) => `${v.toFixed(1)}s`,
+          },
+          splitLine: { show: false },
+        },
+        yAxis: {
+          type: "category",
+          data: behavNames,
+          position: "left",
+          axisLabel: {
+            color: theme.colors.dark[2],
+            fontSize: 11,
+            fontFamily: "monospace",
+          },
+          axisTick: { show: false },
+          axisLine: { show: false },
+        },
+        series: [
+          {
+            type: "custom",
+            encode: { x: [0, 1], y: 2 },
+            renderItem: (_params: any, api: any) => {
+              const start = api.value(0) as number;
+              const stop = api.value(1) as number;
+              const behav = api.value(2) as string;
+              const color = api.value(3) as string;
+              const isSelected = api.value(5) as number;
 
-      const rect = canvas.getBoundingClientRect()
-      const cx = e.clientX - rect.left
-      const cy = e.clientY - rect.top
+              const [x0, y] = api.coord([start, behav]);
+              const [x1] = api.coord([stop, behav]);
+              const barH = Math.min(ROW_HEIGHT * 0.7, api.size([1])[1] * 0.7);
 
-      const [xMin, xMax] = visibleRange
-      const frameRange = xMax - xMin
-      const plotWidth = canvas.width - LABEL_WIDTH
-
-      const clickedFrame = xMin + ((cx - LABEL_WIDTH) / plotWidth) * frameRange
-
-      const behavSet = new Set(bouts.map((b) => b.behav))
-      const behavNames = [...behavSet]
-      const rowH = Math.min(ROW_HEIGHT, (canvas.height - 4) / Math.max(behavNames.length, 1))
-      const rowIdx = Math.floor((cy - 2) / rowH)
-      const behav = behavNames[rowIdx]
-      if (!behav) return
-
-      const hit = bouts.find(
-        (b) => b.behav === behav && b.start <= clickedFrame && b.stop + 1 >= clickedFrame,
-      )
-      if (hit) selectBout(hit.id)
-    },
-    [bouts, visibleRange, selectBout],
-  )
+              return {
+                type: "rect",
+                shape: {
+                  x: x0,
+                  y: y - barH / 2,
+                  width: Math.max(x1 - x0, 2),
+                  height: barH,
+                },
+                style: {
+                  fill: isSelected ? color : color + "BF",
+                  stroke: isSelected ? theme.white : undefined,
+                  lineWidth: isSelected ? 1.5 : 0,
+                },
+                name: "bout-bar",
+                info: api.value(4),
+              };
+            },
+            data,
+          },
+        ],
+        backgroundColor: "#1a1a2e",
+        animation: false,
+      },
+      { notMerge: true },
+    );
+  }, [bouts, selectedBoutId, xMin, xMax, fps, theme]);
 
   return (
-    <div ref={containerRef} style={{ width: '100%' }}>
-      <canvas
-        ref={canvasRef}
-        height={height}
-        onClick={handleClick}
-        style={{ display: 'block', cursor: 'pointer', background: '#1a1a2e', width: '100%' }}
+    <Box bg="#1a1a2e" style={{ flexShrink: 0 }}>
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height: `${height}px` }}
       />
-    </div>
-  )
+    </Box>
+  );
 }

@@ -1,4 +1,5 @@
 import { contextBridge, ipcRenderer } from 'electron'
+import type { Bout, KeypointDef, KeypointFrame } from '../../shared/types'
 
 export interface ElectronAPI {
   openFile: (filters: Electron.FileFilter[]) => Promise<string | null>
@@ -7,6 +8,9 @@ export interface ElectronAPI {
   writeFile: (path: string, data: Uint8Array) => Promise<void>
   writeJson: (path: string, data: unknown) => Promise<void>
   getVideoUrl: (path: string) => Promise<string>
+  parseBehav: (path: string) => Promise<{ bouts: Bout[]; numFrames: number }>
+  parseKeypoints: (path: string, pcutoff: number) => Promise<{ keypointDefs: KeypointDef[]; keypointFrames: KeypointFrame[] }>
+  saveBehav: (path: string, bouts: Bout[]) => Promise<void>
 }
 
 const api: ElectronAPI = {
@@ -16,6 +20,9 @@ const api: ElectronAPI = {
   writeFile: (path, data) => ipcRenderer.invoke('write-file', path, data),
   writeJson: (path, data) => ipcRenderer.invoke('write-json', path, data),
   getVideoUrl: (path) => ipcRenderer.invoke('get-video-url', path),
+  parseBehav: (path) => ipcRenderer.invoke('parse-behav', path),
+  parseKeypoints: (path, pcutoff) => ipcRenderer.invoke('parse-keypoints', path, pcutoff),
+  saveBehav: (path, bouts) => ipcRenderer.invoke('save-behav', path, bouts),
 }
 
 contextBridge.exposeInMainWorld('electron', api)

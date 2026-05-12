@@ -8,16 +8,16 @@
     "dev": "electron-vite dev",
     "build": "electron-vite build",
     "preview": "electron-vite preview",
-    "typecheck": "tsc --noEmit"
+    "typecheck": "tsc --noEmit",
+    "postinstall": "electron-rebuild"
   },
   "dependencies": {
     "@mantine/core": "^7.17.8",
     "@mantine/hooks": "^7.17.8",
     "@tabler/icons-react": "^3.44.0",
     "@tanstack/react-virtual": "^3.13.24",
-    "apache-arrow": "^17.0.0",
     "echarts": "^6.0.0",
-    "parquet-wasm": "^0.6.1",
+    "nodejs-polars": "^0.24.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-resizable-panels": "^4.11.0",
@@ -29,10 +29,9 @@
     "@types/react-dom": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.3",
     "electron": "^33.0.0",
+    "electron-rebuild": "^3.2.9",
     "electron-vite": "^2.3.0",
     "typescript": "^5.6.3",
-    "vite": "^5.4.10",
-    "vite-plugin-top-level-await": "^1.4.4",
-    "vite-plugin-wasm": "^3.3.0"
+    "vite": "^5.4.10"
   }
 }

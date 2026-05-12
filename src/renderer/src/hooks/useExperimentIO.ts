@@ -1,18 +1,15 @@
 import { useState, useCallback, useRef, useEffect } from 'react'
 import { useStore } from '../store'
 import { resolveExperimentPaths, parseAppConfig } from '../lib/fileManager'
-import { parseBehavParquet, parseKeypointsParquet, boutsToBehavParquet } from '../lib/parseParquet'
-import type { ExperimentPaths, AppConfig } from '../types'
+import type { ExperimentPaths, AppConfig } from '../../shared/types'
 
 export function useExperimentIO() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null)
   const [status, setStatus] = useState('Open a config JSON to begin  (File > Open)')
-  const rawTableRef = useRef<import('apache-arrow').Table | null>(null)
   const blobUrlRef = useRef<string | null>(null)
 
   const { paths, bouts, loadExperiment } = useStore()
 
-  // Clean up blob URL on unmount
   useEffect(() => {
     return () => {
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
@@ -31,7 +28,6 @@ export function useExperimentIO() {
       const rawConfig = (await window.electron.readJson(configPath)) as Record<string, unknown>
       const appConfig = parseAppConfig(rawConfig)
 
-      // Load video via blob URL — avoids needing webSecurity: false
       const videoBytes = await window.electron.readFile(expPaths.videoPath)
       if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current)
       const blob = new Blob([videoBytes], { type: 'video/mp4' })
@@ -39,15 +35,12 @@ export function useExperimentIO() {
       blobUrlRef.current = url
       setVideoUrl(url)
 
-      const behavBytes = await window.electron.readFile(expPaths.behavsPath)
-      const { bouts: parsedBouts, numFrames: nf, rawTable: rt } = await parseBehavParquet(behavBytes)
-      rawTableRef.current = rt
+      const { bouts: parsedBouts, numFrames: nf } = await window.electron.parseBehav(expPaths.behavsPath)
 
-      let keypointDefs: import('../types').KeypointDef[] = []
-      let keypointFrames: import('../types').KeypointFrame[] = []
+      let keypointDefs: import('../../shared/types').KeypointDef[] = []
+      let keypointFrames: import('../../shared/types').KeypointFrame[] = []
       try {
-        const kptBytes = await window.electron.readFile(expPaths.keypointsPath)
-        const parsed = await parseKeypointsParquet(kptBytes, appConfig.keypointPcutoff)
+        const parsed = await window.electron.parseKeypoints(expPaths.keypointsPath, appConfig.keypointPcutoff)
         keypointDefs = parsed.keypointDefs
         keypointFrames = parsed.keypointFrames
       } catch {
@@ -62,10 +55,9 @@ export function useExperimentIO() {
   }, [loadExperiment])
 
   const save = useCallback(async () => {
-    if (!paths || !rawTableRef.current) { setStatus('Nothing to save'); return }
+    if (!paths) { setStatus('Nothing to save'); return }
     try {
-      const bytes = await boutsToBehavParquet(bouts, rawTableRef.current)
-      await window.electron.writeFile(paths.behavsPath, bytes)
+      await window.electron.saveBehav(paths.behavsPath, bouts)
       setStatus(`Saved → ${paths.behavsPath}`)
     } catch (err) {
       setStatus(`Save failed: ${String(err)}`)

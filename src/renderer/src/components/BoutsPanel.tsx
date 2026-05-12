@@ -6,8 +6,20 @@ import { ACTUAL_COLORS } from '../types'
 
 const ROW_HEIGHT = 30
 
+function frameToTime(frame: number, fps: number): string {
+  const sec = Math.floor(frame / fps)
+  const m = Math.floor(sec / 60)
+  const s = sec % 60
+  return `${m}:${String(s).padStart(2, '0')}`
+}
+
+function frameDuration(start: number, stop: number, fps: number): string {
+  return ((stop - start + 1) / fps).toFixed(1)
+}
+
 export function BoutsPanel(): React.ReactElement {
-  const { bouts, selectedBoutId, selectBout, panToFrame, focusSizeFrames } = useStore()
+  const { bouts, config, selectedBoutId, selectBout, panToFrame, focusSizeFrames } = useStore()
+  const fps = config?.fps ?? 30
   const parentRef = useRef<HTMLDivElement>(null)
 
   const virtualizer = useVirtualizer({
@@ -65,7 +77,7 @@ export function BoutsPanel(): React.ReactElement {
               <Text size="xs" c={ACTUAL_COLORS[bout.actual]} ff="monospace">{bout.behav}</Text>
               <Text size="xs" c="dimmed" ff="monospace" ml={4}>#{bout.id}</Text>
               <Text size="xs" c="dark.4" ff="monospace" ml="auto">
-                f{bout.start}-{bout.stop}
+                {frameToTime(bout.start, fps)} · {frameDuration(bout.start, bout.stop, fps)}s
               </Text>
             </Box>
           )

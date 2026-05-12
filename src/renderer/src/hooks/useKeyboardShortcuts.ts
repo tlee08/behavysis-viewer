@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
 import { useStore } from '../store'
-import { JUMP_FRAMES } from '../constants'
+const jumpFrames = (fps: number, sec: number) => Math.round(sec * fps)
 
 export function useKeyboardShortcuts(): void {
   const isPlayingRef = useRef(false)
@@ -12,6 +12,7 @@ export function useKeyboardShortcuts(): void {
   const selectedBoutIdRef = useRef<number | null>(null)
   const boutsRef = useRef<ReturnType<typeof useStore.getState>['bouts']>([])
   const focusSizeFramesRef = useRef(0)
+  const jumpSecondsRef = useRef(5)
 
   useEffect(() => {
     const unsub = useStore.subscribe((s) => {
@@ -24,6 +25,7 @@ export function useKeyboardShortcuts(): void {
       selectedBoutIdRef.current = s.selectedBoutId
       boutsRef.current = s.bouts
       focusSizeFramesRef.current = s.focusSizeFrames
+      jumpSecondsRef.current = s.jumpSeconds
     })
 
     const handler = (e: KeyboardEvent) => {
@@ -45,6 +47,7 @@ export function useKeyboardShortcuts(): void {
       const selectedBoutId = selectedBoutIdRef.current
       const bouts = boutsRef.current
       const focusSizeFrames = focusSizeFramesRef.current
+      const jumpSeconds = jumpSecondsRef.current
 
       switch (e.key) {
         case ' ':
@@ -53,11 +56,11 @@ export function useKeyboardShortcuts(): void {
           break
         case 'ArrowLeft':
           e.preventDefault()
-          panToFrame(Math.max(0, currentFrame - JUMP_FRAMES(fps)))
+          panToFrame(Math.max(0, currentFrame - jumpFrames(fps, jumpSeconds)))
           break
         case 'ArrowRight':
           e.preventDefault()
-          panToFrame(Math.min(numFrames - 1, currentFrame + JUMP_FRAMES(fps)))
+          panToFrame(Math.min(numFrames - 1, currentFrame + jumpFrames(fps, jumpSeconds)))
           break
         case 'k':
         case 'K':

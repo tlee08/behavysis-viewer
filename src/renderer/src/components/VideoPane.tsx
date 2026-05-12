@@ -1,4 +1,4 @@
-import { useRef, useEffect, useCallback, useState } from 'react'
+import { useRef, useEffect, useCallback } from 'react'
 import { Box } from '@mantine/core'
 import { useStore } from '../store'
 
@@ -9,8 +9,6 @@ interface Props {
 export function VideoPane({ videoUrl }: Props): React.ReactElement {
   const videoRef = useRef<HTMLVideoElement>(null)
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const [vidDims, setVidDims] = useState({ w: 480, h: 320 })
-
   const {
     config,
     keypointDefs,
@@ -22,6 +20,7 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
     setCurrentFrame,
     setIsPlaying,
   } = useStore()
+  const vidDims = { w: config?.widthPx ?? 640, h: config?.heightPx ?? 480 }
 
   const fps = config?.fps ?? 15
   const rvcHandle = useRef<ReturnType<typeof requestVideoFrameCallback>>(0)
@@ -37,10 +36,9 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
       const radius = config?.keypointRadius ?? 5
       for (const def of keypointDefs) {
         const kpt = frameKpts[def.key]
-        if (!kpt || kpt.likelihood <= 0) continue
-        const video = videoRef.current
-        const scaleX = canvas.width / (video?.videoWidth || canvas.width)
-        const scaleY = canvas.height / (video?.videoHeight || canvas.height)
+        if (!kpt || kpt.likelihood < (config?.keypointPcutoff ?? 0)) continue
+        const scaleX = canvas.width / (config?.widthPx ?? canvas.width)
+        const scaleY = canvas.height / (config?.heightPx ?? canvas.height)
         ctx.beginPath()
         ctx.arc(kpt.x * scaleX, kpt.y * scaleY, radius, 0, Math.PI * 2)
         ctx.fillStyle = def.color
@@ -114,10 +112,6 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
         ref={videoRef}
         src={videoUrl ?? undefined}
         style={{ width: '100%', height: '100%', display: 'block', objectFit: 'contain' }}
-        onLoadedMetadata={() => {
-          const v = videoRef.current
-          if (v) setVidDims({ w: v.videoWidth, h: v.videoHeight })
-        }}
         onEnded={() => setIsPlaying(false)}
       />
       <canvas

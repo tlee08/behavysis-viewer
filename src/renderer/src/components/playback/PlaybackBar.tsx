@@ -1,8 +1,7 @@
 import { Group, Box, Text } from '@mantine/core'
 import { PlaybackControls } from './PlaybackControls'
 import { TimelineSlider } from './TimelineSlider'
-import { PlaybackOptions } from './PlaybackOptions'
-import { SpeedSelector } from './SpeedSelector'
+import { PlaybackSettingsPopover } from './PlaybackSettingsPopover'
 import { useStore } from '../../store'
 
 export function PlaybackBar() {
@@ -31,8 +30,7 @@ export function PlaybackBar() {
         {timeStr}
       </Text>
 
-      <SpeedSelector />
-      <PlaybackOptions />
+      <PlaybackSettingsPopover />
     </Group>
   )
 }

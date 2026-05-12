@@ -1,40 +1,28 @@
 import { create } from 'zustand'
-import type { Bout, AppConfig, ExperimentPaths, KeypointFrame, GraphSeries, KeypointDef, ActualValue } from './types'
+import type { Bout, AppConfig, ExperimentPaths, KeypointFrame, GraphSeries, KeypointDef, ActualValue } from '../../shared/types'
 
 interface AppState {
-  // ── Loaded data ──────────────────────────────────────────────────────────
   paths: ExperimentPaths | null
   config: AppConfig | null
   numFrames: number
   bouts: Bout[]
   keypointDefs: KeypointDef[]
-  keypointFrames: KeypointFrame[]  // index = frame number
-  graphSeries: GraphSeries[]       // additional scrolling data panes
+  keypointFrames: KeypointFrame[]
+  graphSeries: GraphSeries[]
 
-  // ── Video playback ────────────────────────────────────────────────────────
   currentFrame: number
   isPlaying: boolean
-  vidSpeed: number         // playback rate multiplier
-  visibleRange: [number, number] // [startFrame, endFrame] of the visible window
-  focusSizeFrames: number  // padding around bout in focus mode
+  vidSpeed: number
+  visibleRange: [number, number]
+  focusSizeFrames: number
 
-  // ── Display ───────────────────────────────────────────────────────────────
   showKeypoints: boolean
-  focusBout: boolean       // pause at end of selected bout
+  focusBout: boolean
+  jumpSeconds: number
+  graphWindowSeconds: number
 
-  // ── Selection ─────────────────────────────────────────────────────────────
   selectedBoutId: number | null
 
-  // ── Graph Tabs (future) ────────────────────────────────────────────────────
-  // graphTabDefs: { id: string; label: string; seriesIds: string[] }[]
-  // activeGraphTab: string | null
-  // setActiveGraphTab: (tab: string | null) => void
-
-  // ── Annotations (future) ───────────────────────────────────────────────────
-  // annotationMode: 'none' | 'point' | 'rectangle' | 'polygon'
-  // setAnnotationMode: (mode: AppState['annotationMode']) => void
-
-  // ── Actions ───────────────────────────────────────────────────────────────
   loadExperiment: (
     paths: ExperimentPaths,
     config: AppConfig,
@@ -52,17 +40,19 @@ interface AppState {
   setFocusSizeFrames: (n: number) => void
   setShowKeypoints: (show: boolean) => void
   setFocusBout: (focus: boolean) => void
+  setKeypointPcutoff: (pcutoff: number) => void
+  setJumpSeconds: (seconds: number) => void
+  setGraphWindowSeconds: (seconds: number) => void
 
   selectBout: (id: number | null) => void
   updateBoutActual: (id: number, actual: ActualValue) => void
   updateBoutUserDefined: (id: number, key: string, value: ActualValue) => void
 
-  // Extensibility: add a scrolling series (e.g. mouse speed)
   addGraphSeries: (series: GraphSeries) => void
 }
 
 const centerVisibleRange = (frame: number, s: AppState): [number, number] => {
-  const half = Math.floor((s.visibleRange[1] - s.visibleRange[0]) / 2)
+  const half = Math.floor((s.graphWindowSeconds * (s.config?.fps ?? 15)) / 2)
   return [Math.max(0, frame - half), Math.min(s.numFrames - 1, frame + half)]
 }
 
@@ -83,11 +73,21 @@ export const useStore = create<AppState>((set) => ({
 
   showKeypoints: false,
   focusBout: false,
+  jumpSeconds: 5,
+  graphWindowSeconds: 10,
 
   selectedBoutId: null,
 
-  loadExperiment: (paths, config, numFrames, bouts, keypointDefs, keypointFrames) =>
-    set({ paths, config, numFrames, bouts, keypointDefs, keypointFrames, currentFrame: 0, selectedBoutId: null }),
+  loadExperiment: (paths, config, numFrames, bouts, keypointDefs, keypointFrames) => {
+    const density = new Float32Array(numFrames)
+    for (const b of bouts) {
+      for (let i = b.start; i <= b.stop; i++) density[i]++
+    }
+    const graphSeries: GraphSeries[] = [
+      { label: 'Bout density', color: '#60a5fa', values: density },
+    ]
+    set({ paths, config, numFrames, bouts, keypointDefs, keypointFrames, graphSeries, currentFrame: 0, selectedBoutId: null })
+  },
 
   setCurrentFrame: (frame) =>
     set((s) => ({ currentFrame: frame, visibleRange: centerVisibleRange(frame, s) })),
@@ -102,6 +102,10 @@ export const useStore = create<AppState>((set) => ({
   setFocusSizeFrames: (focusSizeFrames) => set({ focusSizeFrames }),
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
   setFocusBout: (focusBout) => set({ focusBout }),
+  setKeypointPcutoff: (keypointPcutoff) =>
+    set((s) => ({ config: s.config ? { ...s.config, keypointPcutoff } : null })),
+  setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
+  setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
 
   selectBout: (selectedBoutId) => set({ selectedBoutId }),
 
