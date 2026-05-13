@@ -1,6 +1,7 @@
 import { Box, useMantineTheme } from "@mantine/core";
 import * as echarts from "echarts";
 import { useEffect, useRef } from "react";
+import { useFps } from "../hooks/useFps";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useStore } from "../store";
 import { ACTUAL_COLORS } from "../../../shared/types";
@@ -16,14 +17,9 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
   const chartRef = useRef<echarts.ECharts | null>(null);
   const selectBoutRef = useRef(useStore.getState().selectBout);
   const theme = useMantineTheme();
-  const {
-    bouts,
-    selectBout,
-    selectedBoutId,
-    config,
-  } = useStore();
+  const { bouts, selectBout, selectedBoutId } = useStore();
+  const fps = useFps();
   const visibleRange = useVisibleRange();
-  const fps = config?.fps ?? 15;
   const xMin = visibleRange[0] / fps;
   const xMax = visibleRange[1] / fps;
 

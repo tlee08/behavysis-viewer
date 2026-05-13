@@ -1,14 +1,15 @@
-import { Group, Box, Text } from '@mantine/core'
-import { PlaybackControls } from './PlaybackControls'
-import { TimelineSlider } from './TimelineSlider'
-import { PlaybackSettingsPopover } from './PlaybackSettingsPopover'
-import { useStore } from '../../store'
+import { Group, Box, Text } from "@mantine/core";
+import { PlaybackControls } from "./PlaybackControls";
+import { TimelineSlider } from "./TimelineSlider";
+import { PlaybackSettingsPopover } from "./PlaybackSettingsPopover";
+import { useFps } from "../../hooks/useFps";
+import { frameToTimecode } from "../../lib/timecode";
+import { useStore } from "../../store";
 
 export function PlaybackBar() {
-  const { currentFrame, config } = useStore()
-  const fps = config?.fps ?? 15
-  const seconds = Math.round(currentFrame / fps)
-  const timeStr = `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`
+  const { currentFrame } = useStore();
+  const fps = useFps();
+  const timeStr = frameToTimecode(currentFrame, fps);
 
   return (
     <Group
@@ -32,5 +33,5 @@ export function PlaybackBar() {
 
       <PlaybackSettingsPopover />
     </Group>
-  )
+  );
 }

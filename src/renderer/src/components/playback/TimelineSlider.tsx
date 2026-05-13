@@ -1,8 +1,8 @@
-import { Slider } from '@mantine/core'
-import { useStore } from '../../store'
+import { Slider } from "@mantine/core";
+import { useStore } from "../../store";
 
 export function TimelineSlider() {
-  const { currentFrame, numFrames, setCurrentFrame } = useStore()
+  const { currentFrame, numFrames, setCurrentFrame } = useStore();
 
   return (
     <Slider
@@ -15,5 +15,5 @@ export function TimelineSlider() {
       size="sm"
       color="blue.4"
     />
-  )
+  );
 }

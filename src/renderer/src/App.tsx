@@ -9,7 +9,7 @@ import { PlaybackBar } from "./components/playback/PlaybackBar";
 import { VideoPane } from "./components/VideoPane";
 import { useExperimentIO } from "./hooks/useExperimentIO";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { useStore } from "./store";
+import { useStore, getBoutById } from "./store";
 
 export default function App(): React.ReactElement {
   const { videoUrl, status, open, save } = useExperimentIO();
@@ -17,7 +17,6 @@ export default function App(): React.ReactElement {
 
   const {
     currentFrame,
-    bouts,
     focusBout,
     selectedBoutId,
     focusSizeFrames,
@@ -26,19 +25,12 @@ export default function App(): React.ReactElement {
 
   useEffect(() => {
     if (!focusBout || selectedBoutId === null) return;
-    const bout = bouts.find((b) => b.id === selectedBoutId);
+    const bout = getBoutById(selectedBoutId);
     if (!bout) return;
     if (currentFrame > bout.stop + focusSizeFrames) {
       setIsPlaying(false);
     }
-  }, [
-    currentFrame,
-    focusBout,
-    selectedBoutId,
-    bouts,
-    focusSizeFrames,
-    setIsPlaying,
-  ]);
+  }, [currentFrame, focusBout, selectedBoutId, focusSizeFrames, setIsPlaying]);
 
   return (
     <Box
@@ -46,11 +38,7 @@ export default function App(): React.ReactElement {
       c="dark.0"
       style={{ display: "flex", flexDirection: "column", height: "100vh" }}
     >
-      <MenuBar
-        onOpen={open}
-        onSave={save}
-        status={status}
-      />
+      <MenuBar onOpen={open} onSave={save} status={status} />
 
       <Group orientation="horizontal" style={{ flex: 1, overflow: "hidden" }}>
         <Panel defaultSize={60} minSize={20}>

@@ -2,31 +2,21 @@ import { Box, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useRef } from "react";
 import { ACTUAL_COLORS } from "../../../shared/types";
-import { useStore } from "../store";
+import { useFps } from "../hooks/useFps";
+import { frameToTimecode, frameDurationSec } from "../lib/timecode";
+import { useStore, getBoutById } from "../store";
 
 const ROW_HEIGHT = 30;
-
-function frameToTime(frame: number, fps: number): string {
-  const sec = Math.floor(frame / fps);
-  const m = Math.floor(sec / 60);
-  const s = sec % 60;
-  return `${m}:${String(s).padStart(2, "0")}`;
-}
-
-function frameDuration(start: number, stop: number, fps: number): string {
-  return ((stop - start + 1) / fps).toFixed(1);
-}
 
 export function BoutsPanel(): React.ReactElement {
   const {
     bouts,
-    config,
     selectedBoutId,
     selectBout,
     setCurrentFrame,
     focusSizeFrames,
   } = useStore();
-  const fps = config?.fps ?? 15;
+  const fps = useFps();
   const parentRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({
@@ -45,7 +35,7 @@ export function BoutsPanel(): React.ReactElement {
 
   const handleSelect = (id: number) => {
     selectBout(id);
-    const bout = bouts.find((b) => b.id === id);
+    const bout = getBoutById(id);
     if (bout) setCurrentFrame(Math.max(0, bout.start - focusSizeFrames));
   };
 
@@ -92,8 +82,8 @@ export function BoutsPanel(): React.ReactElement {
                 #{bout.id}
               </Text>
               <Text size="xs" c="dark.4" ff="monospace" ml="auto">
-                {frameToTime(bout.start, fps)} ·{" "}
-                {frameDuration(bout.start, bout.stop, fps)}s
+                {frameToTimecode(bout.start, fps)} ·{" "}
+                {frameDurationSec(bout.start, bout.stop, fps)}s
               </Text>
             </Box>
           );

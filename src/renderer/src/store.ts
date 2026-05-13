@@ -1,25 +1,32 @@
-import { create } from 'zustand'
-import type { Bout, AppConfig, ExperimentPaths, KeypointFrame, KeypointDef, ActualValue } from '../../shared/types'
+import { create } from "zustand";
+import type {
+  Bout,
+  AppConfig,
+  ExperimentPaths,
+  KeypointFrame,
+  KeypointDef,
+  ActualValue,
+} from "../../shared/types";
 
 interface AppState {
-  paths: ExperimentPaths | null
-  config: AppConfig | null
-  numFrames: number
-  bouts: Bout[]
-  keypointDefs: KeypointDef[]
-  keypointFrames: KeypointFrame[]
+  paths: ExperimentPaths | null;
+  config: AppConfig | null;
+  numFrames: number;
+  bouts: Bout[];
+  keypointDefs: KeypointDef[];
+  keypointFrames: KeypointFrame[];
 
-  currentFrame: number
-  isPlaying: boolean
-  vidSpeed: number
-  focusSizeFrames: number
+  currentFrame: number;
+  isPlaying: boolean;
+  vidSpeed: number;
+  focusSizeFrames: number;
 
-  showKeypoints: boolean
-  focusBout: boolean
-  jumpSeconds: number
-  graphWindowSeconds: number
+  showKeypoints: boolean;
+  focusBout: boolean;
+  jumpSeconds: number;
+  graphWindowSeconds: number;
 
-  selectedBoutId: number | null
+  selectedBoutId: number | null;
 
   loadExperiment: (
     paths: ExperimentPaths,
@@ -28,21 +35,21 @@ interface AppState {
     bouts: Bout[],
     keypointDefs: KeypointDef[],
     keypointFrames: KeypointFrame[],
-  ) => void
+  ) => void;
 
-  setCurrentFrame: (frame: number) => void
-  setIsPlaying: (playing: boolean) => void
-  setVidSpeed: (speed: number) => void
-  setFocusSizeFrames: (n: number) => void
-  setShowKeypoints: (show: boolean) => void
-  setFocusBout: (focus: boolean) => void
-  setKeypointPcutoff: (pcutoff: number) => void
-  setJumpSeconds: (seconds: number) => void
-  setGraphWindowSeconds: (seconds: number) => void
+  setCurrentFrame: (frame: number) => void;
+  setIsPlaying: (playing: boolean) => void;
+  setVidSpeed: (speed: number) => void;
+  setFocusSizeFrames: (n: number) => void;
+  setShowKeypoints: (show: boolean) => void;
+  setFocusBout: (focus: boolean) => void;
+  setKeypointPcutoff: (pcutoff: number) => void;
+  setJumpSeconds: (seconds: number) => void;
+  setGraphWindowSeconds: (seconds: number) => void;
 
-  selectBout: (id: number | null) => void
-  updateBoutActual: (id: number, actual: ActualValue) => void
-  updateBoutUserDefined: (id: number, key: string, value: ActualValue) => void
+  selectBout: (id: number | null) => void;
+  updateBoutActual: (id: number, actual: ActualValue) => void;
+  updateBoutUserDefined: (id: number, key: string, value: ActualValue) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -65,8 +72,24 @@ export const useStore = create<AppState>((set) => ({
 
   selectedBoutId: null,
 
-  loadExperiment: (paths, config, numFrames, bouts, keypointDefs, keypointFrames) => {
-    set({ paths, config, numFrames, bouts, keypointDefs, keypointFrames, currentFrame: 0, selectedBoutId: null })
+  loadExperiment: (
+    paths,
+    config,
+    numFrames,
+    bouts,
+    keypointDefs,
+    keypointFrames,
+  ) => {
+    set({
+      paths,
+      config,
+      numFrames,
+      bouts,
+      keypointDefs,
+      keypointFrames,
+      currentFrame: 0,
+      selectedBoutId: null,
+    });
   },
 
   setCurrentFrame: (currentFrame) => set({ currentFrame }),
@@ -76,7 +99,9 @@ export const useStore = create<AppState>((set) => ({
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
   setFocusBout: (focusBout) => set({ focusBout }),
   setKeypointPcutoff: (keypointPcutoff) =>
-    set((s) => ({ config: s.config ? { ...s.config, keypointPcutoff } : null })),
+    set((s) => ({
+      config: s.config ? { ...s.config, keypointPcutoff } : null,
+    })),
   setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
 
@@ -90,7 +115,13 @@ export const useStore = create<AppState>((set) => ({
   updateBoutUserDefined: (id, key, value) =>
     set((s) => ({
       bouts: s.bouts.map((b) =>
-        b.id === id ? { ...b, userDefined: { ...b.userDefined, [key]: value } } : b,
+        b.id === id
+          ? { ...b, userDefined: { ...b.userDefined, [key]: value } }
+          : b,
       ),
     })),
-}))
+}));
+
+export function getBoutById(id: number): Bout | undefined {
+  return useStore.getState().bouts.find((b) => b.id === id);
+}
