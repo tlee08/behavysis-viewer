@@ -36,7 +36,7 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
       const radius = config?.keypointRadius ?? 5;
       for (const def of keypointDefs) {
         const kpt = frameKpts[def.key];
-        if (!kpt || kpt.likelihood < (config?.keypointPcutoff ?? 0)) continue;
+        if (!kpt || kpt.likelihood < config!.keypointPcutoff) continue;
         const scaleX = canvas.width / (config?.widthPx ?? canvas.width);
         const scaleY = canvas.height / (config?.heightPx ?? canvas.height);
         ctx.beginPath();

@@ -55,29 +55,33 @@ export function parseKeypointsParquet(
 
   const numRows = df.height;
   const totalFrames = row0Frame + numRows;
-  const keypointFrames: KeypointFrame[] = Array.from(
-    { length: totalFrames },
-    () => ({}),
-  );
+  const keypointFrames: KeypointFrame[] = new Array(totalFrames);
 
   for (const { arrowName, indiv, bpt, coord } of kptCols) {
     const vec = vectors.get(arrowName)!;
     const key = `${indiv}_${bpt}`;
     for (let i = 0; i < numRows; i++) {
       const frameIdx = row0Frame + i;
-      if (!keypointFrames[frameIdx][key]) {
-        keypointFrames[frameIdx][key] = { x: 0, y: 0, likelihood: 0 };
+      let frame = keypointFrames[frameIdx];
+      if (!frame) {
+        frame = {};
+        keypointFrames[frameIdx] = frame;
       }
-      keypointFrames[frameIdx][key][coord] = vec[i];
+      if (!frame[key]) {
+        frame[key] = { x: 0, y: 0, likelihood: 0 };
+      }
+      frame[key][coord] = vec[i];
     }
   }
 
   // Zero out entries below pcutoff so the overlay skips them
   for (let i = row0Frame; i < totalFrames; i++) {
+    const frame = keypointFrames[i];
+    if (!frame) continue;
     for (const kpt of kptKeys) {
-      const e = keypointFrames[i][kpt.key];
+      const e = frame[kpt.key];
       if (e && e.likelihood < pcutoff) {
-        keypointFrames[i][kpt.key] = { x: 0, y: 0, likelihood: 0 };
+        frame[kpt.key] = { x: 0, y: 0, likelihood: 0 };
       }
     }
   }
