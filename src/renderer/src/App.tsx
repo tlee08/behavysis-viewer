@@ -4,7 +4,6 @@ import { Group, Panel, Separator } from "react-resizable-panels";
 import { BoutInspector } from "./components/BoutInspector";
 import { BoutsPanel } from "./components/BoutsPanel";
 import { BoutTimeline } from "./components/BoutTimeline";
-import { DataGraphPane } from "./components/DataGraphPane";
 import { MenuBar } from "./components/MenuBar";
 import { PlaybackBar } from "./components/playback/PlaybackBar";
 import { VideoPane } from "./components/VideoPane";
@@ -13,13 +12,12 @@ import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 import { useStore } from "./store";
 
 export default function App(): React.ReactElement {
-  const { videoUrl, status, open, save, saveJson } = useExperimentIO();
+  const { videoUrl, status, open, save } = useExperimentIO();
   useKeyboardShortcuts();
 
   const {
     currentFrame,
     bouts,
-    graphSeries,
     focusBout,
     selectedBoutId,
     focusSizeFrames,
@@ -51,7 +49,6 @@ export default function App(): React.ReactElement {
       <MenuBar
         onOpen={open}
         onSave={save}
-        onSaveJson={saveJson}
         status={status}
       />
 
@@ -66,9 +63,6 @@ export default function App(): React.ReactElement {
             <PlaybackBar />
             <Box style={{ flex: 1, overflow: "auto" }}>
               <BoutTimeline height={120} />
-              {graphSeries.map((s) => (
-                <DataGraphPane key={s.label} series={s} height={100} />
-              ))}
             </Box>
           </Box>
         </Panel>

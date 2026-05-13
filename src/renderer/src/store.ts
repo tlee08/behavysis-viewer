@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { Bout, AppConfig, ExperimentPaths, KeypointFrame, GraphSeries, KeypointDef, ActualValue } from '../../shared/types'
+import type { Bout, AppConfig, ExperimentPaths, KeypointFrame, KeypointDef, ActualValue } from '../../shared/types'
 
 interface AppState {
   paths: ExperimentPaths | null
@@ -8,12 +8,10 @@ interface AppState {
   bouts: Bout[]
   keypointDefs: KeypointDef[]
   keypointFrames: KeypointFrame[]
-  graphSeries: GraphSeries[]
 
   currentFrame: number
   isPlaying: boolean
   vidSpeed: number
-  visibleRange: [number, number]
   focusSizeFrames: number
 
   showKeypoints: boolean
@@ -35,8 +33,6 @@ interface AppState {
   setCurrentFrame: (frame: number) => void
   setIsPlaying: (playing: boolean) => void
   setVidSpeed: (speed: number) => void
-  setVisibleRange: (range: [number, number]) => void
-  panToFrame: (frame: number) => void
   setFocusSizeFrames: (n: number) => void
   setShowKeypoints: (show: boolean) => void
   setFocusBout: (focus: boolean) => void
@@ -47,13 +43,6 @@ interface AppState {
   selectBout: (id: number | null) => void
   updateBoutActual: (id: number, actual: ActualValue) => void
   updateBoutUserDefined: (id: number, key: string, value: ActualValue) => void
-
-  addGraphSeries: (series: GraphSeries) => void
-}
-
-const centerVisibleRange = (frame: number, s: AppState): [number, number] => {
-  const half = Math.floor((s.graphWindowSeconds * (s.config?.fps ?? 15)) / 2)
-  return [Math.max(0, frame - half), Math.min(s.numFrames - 1, frame + half)]
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -63,12 +52,10 @@ export const useStore = create<AppState>((set) => ({
   bouts: [],
   keypointDefs: [],
   keypointFrames: [],
-  graphSeries: [],
 
   currentFrame: 0,
   isPlaying: false,
   vidSpeed: 1,
-  visibleRange: [0, 50],
   focusSizeFrames: 5,
 
   showKeypoints: false,
@@ -79,26 +66,12 @@ export const useStore = create<AppState>((set) => ({
   selectedBoutId: null,
 
   loadExperiment: (paths, config, numFrames, bouts, keypointDefs, keypointFrames) => {
-    const density = new Float32Array(numFrames)
-    for (const b of bouts) {
-      for (let i = b.start; i <= b.stop; i++) density[i]++
-    }
-    const graphSeries: GraphSeries[] = [
-      { label: 'Bout density', color: '#60a5fa', values: density },
-    ]
-    set({ paths, config, numFrames, bouts, keypointDefs, keypointFrames, graphSeries, currentFrame: 0, selectedBoutId: null })
+    set({ paths, config, numFrames, bouts, keypointDefs, keypointFrames, currentFrame: 0, selectedBoutId: null })
   },
 
-  setCurrentFrame: (frame) =>
-    set((s) => ({ currentFrame: frame, visibleRange: centerVisibleRange(frame, s) })),
+  setCurrentFrame: (currentFrame) => set({ currentFrame }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   setVidSpeed: (vidSpeed) => set({ vidSpeed }),
-  setVisibleRange: (visibleRange) => set({ visibleRange }),
-  panToFrame: (frame) =>
-    set((s) => ({
-      currentFrame: frame,
-      visibleRange: centerVisibleRange(frame, s),
-    })),
   setFocusSizeFrames: (focusSizeFrames) => set({ focusSizeFrames }),
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
   setFocusBout: (focusBout) => set({ focusBout }),
@@ -120,7 +93,4 @@ export const useStore = create<AppState>((set) => ({
         b.id === id ? { ...b, userDefined: { ...b.userDefined, [key]: value } } : b,
       ),
     })),
-
-  addGraphSeries: (series) =>
-    set((s) => ({ graphSeries: [...s.graphSeries, series] })),
 }))

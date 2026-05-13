@@ -1,7 +1,7 @@
 import { Paper, Text, Radio, Stack, Checkbox, Group } from '@mantine/core'
 import { useStore } from '../store'
-import type { ActualValue } from '../types'
-import { ACTUAL_COLORS } from '../types'
+import type { ActualValue } from '../../../shared/types'
+import { ACTUAL_COLORS } from '../../../shared/types'
 
 const ACTUAL_OPTIONS: { label: string; value: ActualValue }[] = [
   { label: 'IS behaviour', value: 1 },

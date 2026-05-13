@@ -1,8 +1,7 @@
 import pl from 'nodejs-polars'
 import { parseTuple2 } from './columnNames'
+import { getRow0Frame } from './parquetUtils'
 import type { Bout, ActualValue } from '../../shared/types'
-
-const INDEX_COLUMNS = new Set(['__index_level_0__', 'frame'])
 
 interface BehavColumn {
   arrowName: string
@@ -20,16 +19,6 @@ function parseBehavColumns(columnNames: string[]): BehavColumn[] {
     }
   }
   return result
-}
-
-/** Find the frame number of the first row by checking index columns. */
-function getRow0Frame(df: pl.DataFrame): number {
-  for (const name of INDEX_COLUMNS) {
-    if (df.columns.includes(name)) {
-      return Number(df.getColumn(name).get(0))
-    }
-  }
-  return 0
 }
 
 function clampActual(v: number): ActualValue {

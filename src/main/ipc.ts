@@ -1,6 +1,5 @@
 import { ipcMain, dialog } from 'electron'
-import { readFileSync, writeFileSync } from 'fs'
-import { pathToFileURL } from 'url'
+import { readFileSync } from 'fs'
 import { parseBehavParquet } from './lib/parseBehav'
 import { parseKeypointsParquet } from './lib/parseKeypoints'
 import { saveBehavParquet } from './lib/saveBehav'
@@ -21,20 +20,6 @@ export function registerIpcHandlers(): void {
   ipcMain.handle('read-json', (_, filePath: string): unknown => {
     return JSON.parse(readFileSync(filePath, 'utf-8'))
   })
-
-  ipcMain.handle('write-file', (_, filePath: string, data: Uint8Array): void => {
-    writeFileSync(filePath, data)
-  })
-
-  ipcMain.handle('write-json', (_, filePath: string, data: unknown): void => {
-    writeFileSync(filePath, JSON.stringify(data, null, 2), 'utf-8')
-  })
-
-  ipcMain.handle('get-video-url', (_, filePath: string): string => {
-    return pathToFileURL(filePath).href
-  })
-
-  // ── Polars-backed parquet parsing ──────────────────────────────────────────
 
   ipcMain.handle('parse-behav', (_, path: string) => {
     return parseBehavParquet(path)

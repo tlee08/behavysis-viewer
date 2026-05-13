@@ -36,17 +36,6 @@ export interface KeypointDef {
   color: string  // hex
 }
 
-// A named series of per-frame scalar values — used for extra graph panes.
-// values[frameNum] = scalar (NaN if missing).
-export interface GraphSeries {
-  label: string
-  color: string
-  values: Float32Array
-}
-
-// The following types remain renderer-specific but are co-located
-// for simplicity — the main process doesn't use them.
-
 export interface AppConfig {
   fps: number
   keypointPcutoff: number

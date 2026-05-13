@@ -17,7 +17,7 @@ export function PlaybackControls() {
     config,
     jumpSeconds,
     setIsPlaying,
-    panToFrame,
+    setCurrentFrame,
   } = useStore();
   const fps = config?.fps ?? 15;
 
@@ -27,7 +27,7 @@ export function PlaybackControls() {
         variant="subtle"
         color="gray"
         onClick={() =>
-          panToFrame(Math.max(0, currentFrame - jumpFrames(fps, jumpSeconds)))
+          setCurrentFrame(Math.max(0, currentFrame - jumpFrames(fps, jumpSeconds)))
         }
       >
         <IconPlayerSkipBackFilled size={18} />
@@ -49,7 +49,7 @@ export function PlaybackControls() {
         variant="subtle"
         color="gray"
         onClick={() =>
-          panToFrame(
+          setCurrentFrame(
             Math.min(
               numFrames - 1,
               currentFrame + jumpFrames(fps, jumpSeconds),

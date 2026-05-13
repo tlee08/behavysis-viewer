@@ -3,16 +3,14 @@ import { Group, Button, Text } from '@mantine/core'
 interface Props {
   onOpen: () => void
   onSave: () => void
-  onSaveJson: () => void
   status: string
 }
 
-export function MenuBar({ onOpen, onSave, onSaveJson, status }: Props): React.ReactElement {
+export function MenuBar({ onOpen, onSave, status }: Props): React.ReactElement {
   return (
     <Group gap="xs" px="xs" py={4} bg="dark.6" style={{ flexShrink: 0 }}>
       <Button variant="subtle" size="xs" onClick={onOpen}>Open</Button>
       <Button variant="subtle" size="xs" onClick={onSave}>Save</Button>
-      <Button variant="subtle" size="xs" onClick={onSaveJson}>Save bouts JSON</Button>
 
       <Text
         size="xs"

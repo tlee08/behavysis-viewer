@@ -1,8 +1,9 @@
 import { Box, useMantineTheme } from "@mantine/core";
+import * as echarts from "echarts";
 import { useEffect, useRef } from "react";
-import { useECharts } from "../hooks/useECharts";
+import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useStore } from "../store";
-import { ACTUAL_COLORS } from "../types";
+import { ACTUAL_COLORS } from "../../../shared/types";
 
 interface Props {
   height?: number;
@@ -12,21 +13,44 @@ const ROW_HEIGHT = 24;
 
 export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useECharts(containerRef, height);
+  const chartRef = useRef<echarts.ECharts | null>(null);
   const selectBoutRef = useRef(useStore.getState().selectBout);
   const theme = useMantineTheme();
   const {
     bouts,
     selectBout,
     selectedBoutId,
-    visibleRange,
     config,
   } = useStore();
+  const visibleRange = useVisibleRange();
   const fps = config?.fps ?? 15;
   const xMin = visibleRange[0] / fps;
   const xMax = visibleRange[1] / fps;
 
   selectBoutRef.current = selectBout;
+
+  useEffect(() => {
+    const node = containerRef.current;
+    if (!node) return;
+
+    const chart = echarts.init(node, undefined, {
+      width: node.clientWidth,
+      height,
+    });
+    chartRef.current = chart;
+
+    const ro = new ResizeObserver(() => {
+      const w = containerRef.current?.clientWidth;
+      if (w) chart.resize({ width: w, height });
+    });
+    ro.observe(node);
+
+    return () => {
+      ro.disconnect();
+      chart.dispose();
+      chartRef.current = null;
+    };
+  }, [height]);
 
   useEffect(() => {
     const chart = chartRef.current;

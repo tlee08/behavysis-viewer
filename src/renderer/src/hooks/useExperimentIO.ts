@@ -64,15 +64,5 @@ export function useExperimentIO() {
     }
   }, [paths, bouts])
 
-  const saveJson = useCallback(async () => {
-    if (!paths) { setStatus('Nothing to save'); return }
-    try {
-      await window.electron.writeJson(paths.behavsPath.replace(/\.parquet$/, '_bouts.json'), bouts)
-      setStatus('Saved bouts as JSON')
-    } catch (err) {
-      setStatus(`Save failed: ${String(err)}`)
-    }
-  }, [paths, bouts])
-
-  return { videoUrl, status, open, save, saveJson }
+  return { videoUrl, status, open, save }
 }
