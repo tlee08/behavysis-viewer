@@ -12,7 +12,8 @@ export function useExperimentIO() {
   );
   const readerRef = useRef<FrameReader | null>(null);
 
-  const { paths, bouts, loadExperiment, setVideoMetadata } = useStore();
+  const { paths, bouts, loadExperiment, setVideoMetadata, setFeatureColumns } =
+    useStore();
 
   useEffect(() => {
     return () => {
@@ -66,6 +67,15 @@ export function useExperimentIO() {
         // Keypoints file absent — silently skip
       }
 
+      let featureCols: string[] = [];
+      try {
+        featureCols = await window.electron.parseFeaturesColumns(
+          expPaths.featuresPath,
+        );
+      } catch {
+        // Features file absent — silently skip
+      }
+
       loadExperiment(
         expPaths,
         appConfig,
@@ -74,6 +84,8 @@ export function useExperimentIO() {
         keypointDefs,
         keypointFrames,
       );
+
+      setFeatureColumns(featureCols);
       setStatus(`Opened: ${expPaths.name}`);
     } catch (err) {
       setStatus(`Error: ${String(err)}`);

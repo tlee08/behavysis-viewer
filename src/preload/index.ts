@@ -14,6 +14,11 @@ export interface ElectronAPI {
     keypointFrames: KeypointFrame[];
   }>;
   saveBehav: (path: string, bouts: Bout[]) => Promise<void>;
+  parseFeaturesColumns: (path: string) => Promise<string[]>;
+  parseFeaturesData: (
+    path: string,
+    columns: string[],
+  ) => Promise<Record<string, Float64Array>>;
 }
 
 const api: ElectronAPI = {
@@ -24,6 +29,10 @@ const api: ElectronAPI = {
   parseKeypoints: (path, pcutoff) =>
     ipcRenderer.invoke("parse-keypoints", path, pcutoff),
   saveBehav: (path, bouts) => ipcRenderer.invoke("save-behav", path, bouts),
+  parseFeaturesColumns: (path) =>
+    ipcRenderer.invoke("parse-features-columns", path),
+  parseFeaturesData: (path, columns) =>
+    ipcRenderer.invoke("parse-features-data", path, columns),
 };
 
 contextBridge.exposeInMainWorld("electron", api);

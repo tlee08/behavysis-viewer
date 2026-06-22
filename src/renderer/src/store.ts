@@ -28,6 +28,12 @@ interface AppState {
   jumpSeconds: number;
   graphWindowSeconds: number;
 
+  featureColumns: string[];
+  selectedFeatureColumns: string[];
+  featureData: Record<string, Float64Array>;
+  featureYGlobal: boolean;
+  featureScaleMode: "raw" | "minmax" | "zscore";
+
   selectedBoutId: number | null;
 
   loadExperiment: (
@@ -50,6 +56,12 @@ interface AppState {
   setKeypointRadius: (radius: number) => void;
   setJumpSeconds: (seconds: number) => void;
   setGraphWindowSeconds: (seconds: number) => void;
+
+  setFeatureColumns: (columns: string[]) => void;
+  setSelectedFeatureColumns: (columns: string[]) => void;
+  setFeatureData: (data: Record<string, Float64Array>) => void;
+  setFeatureYGlobal: (v: boolean) => void;
+  setFeatureScaleMode: (mode: "raw" | "minmax" | "zscore") => void;
 
   selectBout: (id: number | null) => void;
   interimBoutEdit: {
@@ -84,6 +96,12 @@ export const useStore = create<AppState>((set, get) => ({
   jumpSeconds: 5,
   graphWindowSeconds: 10,
 
+  featureColumns: [],
+  selectedFeatureColumns: [],
+  featureData: {},
+  featureYGlobal: false,
+  featureScaleMode: "minmax",
+
   selectedBoutId: null,
 
   loadExperiment: (
@@ -103,6 +121,9 @@ export const useStore = create<AppState>((set, get) => ({
       keypointFrames,
       currentFrame: 0,
       selectedBoutId: null,
+      featureColumns: [],
+      selectedFeatureColumns: [],
+      featureData: {},
     });
   },
 
@@ -123,6 +144,13 @@ export const useStore = create<AppState>((set, get) => ({
     })),
   setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
+
+  setFeatureColumns: (featureColumns) => set({ featureColumns }),
+  setSelectedFeatureColumns: (selectedFeatureColumns) =>
+    set({ selectedFeatureColumns }),
+  setFeatureData: (featureData) => set({ featureData }),
+  setFeatureYGlobal: (featureYGlobal) => set({ featureYGlobal }),
+  setFeatureScaleMode: (featureScaleMode) => set({ featureScaleMode }),
 
   selectBout: (selectedBoutId) => {
     if (selectedBoutId === null) {

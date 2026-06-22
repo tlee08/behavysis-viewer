@@ -48,6 +48,7 @@ export interface KeypointDef {
 export interface AppConfig {
   fps: number;
   numFrames: number;
+  startFrame: number;
   keypointPcutoff: number;
   keypointRadius: number;
   widthPx: number;
@@ -59,5 +60,6 @@ export interface ExperimentPaths {
   videoPath: string;
   behavsPath: string;
   keypointsPath: string;
+  featuresPath: string;
   name: string;
 }

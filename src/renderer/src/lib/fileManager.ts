@@ -7,6 +7,7 @@ import type { ExperimentPaths } from "../../shared/types";
 //     0_config/{name}.json          ← user selects this
 //     2_formatted_vid/{name}.mp4    ← resolved sibling
 //     4_preprocessed/{name}.parquet ← resolved sibling
+//     5_features_extracted/{name}.parquet ← resolved sibling
 //     7_scored_behavs/{name}.parquet ← resolved sibling
 
 function sep(p: string) {
@@ -48,12 +49,14 @@ export function resolveExperimentPaths(configPath: string): ExperimentPaths {
     videoPath: joinFn(root, "2_formatted_vid", `${name}.mp4`),
     behavsPath: joinFn(root, "7_scored_behavs", `${name}.parquet`),
     keypointsPath: joinFn(root, "4_preprocessed", `${name}.parquet`),
+    featuresPath: joinFn(root, "5_features_extracted", `${name}.parquet`),
   };
 }
 
 export function parseAppConfig(raw: Record<string, unknown>): {
   fps: number;
   numFrames: number;
+  startFrame: number;
   keypointPcutoff: number;
   keypointRadius: number;
   widthPx: number;
@@ -67,6 +70,7 @@ export function parseAppConfig(raw: Record<string, unknown>): {
   return {
     fps: Number(autoFormattedVid.fps),
     numFrames: Number(autoFormattedVid.total_frames),
+    startFrame: Number(auto.start_frame ?? 0),
     keypointPcutoff: Number(evaluateVid.pcutoff),
     keypointRadius: Number(evaluateVid.radius),
     widthPx: Number(autoFormattedVid.width_px),
