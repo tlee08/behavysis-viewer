@@ -1,7 +1,7 @@
 import { Box } from "@mantine/core";
 import { useCallback, useEffect, useRef } from "react";
+import type { FrameMetadata, FrameReader } from "../lib/frameReader";
 import { useStore } from "../store";
-import type { FrameReader, FrameMetadata } from "../lib/frameReader";
 
 interface Props {
   reader: FrameReader | null;
@@ -12,7 +12,6 @@ export function VideoPane({ reader, metadata }: Props): React.ReactElement {
   const videoCanvasRef = useRef<HTMLCanvasElement>(null);
   const keypointCanvasRef = useRef<HTMLCanvasElement>(null);
   const animHandle = useRef<number>(0);
-  const lastTickRef = useRef<number>(0);
   const expectedFrameRef = useRef<number>(0);
 
   const {
@@ -43,18 +42,21 @@ export function VideoPane({ reader, metadata }: Props): React.ReactElement {
         return;
       }
 
-      reader.getFrame(frameIdx).then((frame) => {
-        if (videoCanvasRef.current) {
-          const c = videoCanvasRef.current.getContext("2d");
-          if (c) {
-            c.clearRect(0, 0, canvas.width, canvas.height);
-            c.drawImage(frame, 0, 0, canvas.width, canvas.height);
+      reader
+        .getFrame(frameIdx)
+        .then((frame) => {
+          if (videoCanvasRef.current) {
+            const c = videoCanvasRef.current.getContext("2d");
+            if (c) {
+              c.clearRect(0, 0, canvas.width, canvas.height);
+              c.drawImage(frame, 0, 0, canvas.width, canvas.height);
+            }
           }
-        }
-        frame.close();
-      }).catch((err) => {
-        console.error("drawFrame failed for frame", frameIdx, err);
-      });
+          // Frame lifetime managed by FrameReader cache — do not close here
+        })
+        .catch((err) => {
+          console.error("drawFrame failed for frame", frameIdx, err);
+        });
     },
     [reader],
   );
@@ -88,34 +90,41 @@ export function VideoPane({ reader, metadata }: Props): React.ReactElement {
   useEffect(() => {
     if (!isPlaying || !reader || !metadata) return;
 
-    lastTickRef.current = 0;
+    const frameInterval = 1000 / (fps * vidSpeed);
+    let nextFrameTime = 0;
     expectedFrameRef.current = useStore.getState().currentFrame;
 
     const tick = (timestamp: number) => {
       const state = useStore.getState();
       if (!state.isPlaying) return;
 
-      // Detect external seek (user clicked slider or pressed arrow while playing)
-      if (Math.abs(state.currentFrame - expectedFrameRef.current) > 2) {
-        lastTickRef.current = 0;
-        expectedFrameRef.current = state.currentFrame;
-      }
+      if (!nextFrameTime) nextFrameTime = timestamp;
 
-      if (!lastTickRef.current) lastTickRef.current = timestamp;
-      const deltaSec = (timestamp - lastTickRef.current) / 1000;
-      lastTickRef.current = timestamp;
+      if (timestamp >= nextFrameTime) {
+        // Advance to catch up with elapsed time (handles tab-away)
+        const elapsed = timestamp - nextFrameTime + frameInterval;
+        const framesToAdvance = Math.min(
+          Math.max(1, Math.floor(elapsed / frameInterval)),
+          metadata.totalFrames - 1 - expectedFrameRef.current,
+        );
 
-      const advance = Math.max(1, Math.round(deltaSec * fps * vidSpeed));
-      const next = Math.min(expectedFrameRef.current + advance, metadata.totalFrames - 1);
-      expectedFrameRef.current = next;
+        // Detect external seek (user clicked slider or pressed arrow while playing)
+        if (Math.abs(state.currentFrame - expectedFrameRef.current) > 2) {
+          expectedFrameRef.current = state.currentFrame;
+          nextFrameTime = timestamp;
+        } else {
+          const next = expectedFrameRef.current + framesToAdvance;
+          expectedFrameRef.current = next;
+          nextFrameTime += framesToAdvance * frameInterval;
+          setCurrentFrame(next);
+          callbacksRef.current.drawFrame(next);
+          callbacksRef.current.drawKeypoints(next);
 
-      setCurrentFrame(next);
-      callbacksRef.current.drawFrame(next);
-      callbacksRef.current.drawKeypoints(next);
-
-      if (next >= metadata.totalFrames - 1) {
-        setIsPlaying(false);
-        return;
+          if (next >= metadata.totalFrames - 1) {
+            setIsPlaying(false);
+            return;
+          }
+        }
       }
 
       animHandle.current = requestAnimationFrame(tick);
@@ -126,7 +135,15 @@ export function VideoPane({ reader, metadata }: Props): React.ReactElement {
     return () => {
       cancelAnimationFrame(animHandle.current);
     };
-  }, [isPlaying, reader, metadata, fps, vidSpeed, setIsPlaying, setCurrentFrame]);
+  }, [
+    isPlaying,
+    reader,
+    metadata,
+    fps,
+    vidSpeed,
+    setIsPlaying,
+    setCurrentFrame,
+  ]);
 
   useEffect(() => {
     if (!isPlaying && reader) {
@@ -160,7 +177,12 @@ export function VideoPane({ reader, metadata }: Props): React.ReactElement {
         ref={videoCanvasRef}
         width={width}
         height={height}
-        style={{ width: "100%", height: "100%", display: "block", objectFit: "contain" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          display: "block",
+          objectFit: "contain",
+        }}
       />
       <canvas
         ref={keypointCanvasRef}

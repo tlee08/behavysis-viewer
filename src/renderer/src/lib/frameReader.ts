@@ -1,14 +1,4 @@
 // FrameReader — frame-exact video decoding via WebCodecs + mp4box.js
-//
-// Architecture:
-//   1. Parse MP4 container with mp4box.js → codec config + sample index
-//   2. Configure VideoDecoder with codec description (avcC bytes)
-//   3. On seek(frameN): find nearest keyframe → seek mp4box → extract samples →
-//      feed to VideoDecoder → count output frames → return target frame
-//   4. Cache decoded frames in sliding window for instant small-seek replay
-//
-// Runs in the renderer process where WebCodecs (VideoDecoder, VideoFrame) and
-// mp4box.js (ISOFile) are available.
 
 import * as MP4Box from "mp4box";
 
@@ -18,83 +8,65 @@ export interface FrameMetadata {
   codedHeight: number;
   fps: number;
   totalFrames: number;
-  keyframeIndices: number[];  // frame indices (0-based) that are keyframes
+  keyframeIndices: number[];
   timescale: number;
-  description: Uint8Array;     // codec extradata (avcC / hvcC / vp9 vpcC)
+  description: Uint8Array;
 }
 
+type Waiter = {
+  resolve: (frame: VideoFrame) => void;
+  reject: (err: Error) => void;
+};
+
 export class FrameReader {
-  private mp4file: MP4Box.ISOFile;
   private decoder: VideoDecoder | null = null;
-  private trackId: number;
+  private decoderConfigured = false;
   private samples: MP4Box.Sample[];
-  private timescale: number;
+  private videoBuffer: ArrayBuffer;
 
-  // Keyframe sample numbers (1-based, maps frame → sample)
-  private keyframeSet: Set<number> = new Set();
+  private activeDecode: {
+    decodeStartFrame: number;
+    decodeEndFrame: number;
+    decodedCount: number;
+    waiters: Map<number, Waiter>;
+  } | null = null;
 
-  // Async state for getFrame resolution
-  private pendingResolve: ((frame: VideoFrame) => void) | null = null;
-  private pendingReject: ((err: Error) => void) | null = null;
-  private targetFrame: number = -1;
-  private decodedCount: number = 0;
-  private decodeStartFrame: number = 0;
-  private isExtracting: boolean = false;
-
-  // Sliding window cache
   private frameCache = new Map<number, VideoFrame>();
   private cacheSize = 90;
 
   public readonly metadata: FrameMetadata;
 
   private constructor(
-    mp4file: MP4Box.ISOFile,
     metadata: FrameMetadata,
-    trackId: number,
     samples: MP4Box.Sample[],
-    keyframeSet: Set<number>,
+    videoBuffer: ArrayBuffer,
   ) {
-    this.mp4file = mp4file;
     this.metadata = metadata;
-    this.trackId = trackId;
     this.samples = samples;
-    this.timescale = metadata.timescale;
-    this.keyframeSet = keyframeSet;
+    this.videoBuffer = videoBuffer;
   }
 
   static async init(buffer: ArrayBuffer): Promise<FrameReader> {
     const arrBuf = buffer as ArrayBuffer;
     arrBuf.fileStart = 0;
-    console.log("FrameReader: parsing MP4, buffer size:", buffer.byteLength, "bytes");
+    console.log("FrameReader: parsing MP4,", buffer.byteLength, "bytes");
 
     const mp4file = MP4Box.createFile();
 
     const ready = new Promise<{
       metadata: FrameMetadata;
-      trackId: number;
       samples: MP4Box.Sample[];
-      keyframeSet: Set<number>;
     }>((resolve, reject) => {
       mp4file.onReady = (info) => {
         try {
           const vt = info.videoTracks[0];
-          if (!vt) {
-            reject(new Error("No video track found in MP4"));
-            return;
-          }
+          if (!vt) throw new Error("No video track");
 
           const samples = mp4file.getTrackSamplesInfo(vt.id);
-          const keyframeSet = new Set<number>();
           const keyframeIndices: number[] = [];
-
           for (const s of samples) {
-            if (s.is_sync) {
-              keyframeSet.add(s.number);
-              keyframeIndices.push(s.number);  // sample number = frame index (0-based)
-            }
+            if (s.is_sync) keyframeIndices.push(s.number);
           }
-
-          const description = extractDescription(mp4file);
 
           resolve({
             metadata: {
@@ -105,28 +77,31 @@ export class FrameReader {
               totalFrames: vt.nb_samples,
               keyframeIndices,
               timescale: vt.timescale,
-              description,
+              description: extractDescription(mp4file),
             },
-            trackId: vt.id,
             samples,
-            keyframeSet,
           });
         } catch (err) {
           reject(err);
         }
       };
-
-      mp4file.onError = (source, msg) => {
-        reject(new Error(`mp4box error [${source}]: ${msg}`));
+      mp4file.onError = (_source, msg) => {
+        reject(new Error(`mp4box error: ${msg}`));
       };
     });
 
     mp4file.appendBuffer(arrBuf);
     mp4file.flush();
 
-          const { metadata, trackId, samples, keyframeSet } = await ready;
-    console.log("FrameReader: ready, codec:", metadata.codec, "fps:", metadata.fps.toFixed(2), "frames:", metadata.totalFrames, "description:", metadata.description.length, "bytes");
-    return new FrameReader(mp4file, metadata, trackId, samples, keyframeSet);
+    const { metadata, samples } = await ready;
+    console.log(
+      "FrameReader: ready, codec:", metadata.codec,
+      "fps:", metadata.fps.toFixed(2),
+      "frames:", metadata.totalFrames,
+      "keyframes:", metadata.keyframeIndices.length,
+      "desc:", metadata.description.length, "bytes",
+    );
+    return new FrameReader(metadata, samples, buffer);
   }
 
   async getFrame(frameIndex: number): Promise<VideoFrame> {
@@ -139,125 +114,132 @@ export class FrameReader {
     const cached = this.frameCache.get(frameIndex);
     if (cached) return cached;
 
-    console.log("FrameReader: getFrame", frameIndex, "(nearest keyframe:", this.findNearestKeyframe(frameIndex), ")");
-
-    const keyframeFrameIdx = this.findNearestKeyframe(frameIndex);
-    const keyframeSampleNum = keyframeFrameIdx;
-
-    const allSamples = this.mp4file.getTrackSamplesInfo(this.trackId);
-    const keyframeSample = allSamples.find(
-      (s) => s.number === keyframeSampleNum,
-    );
-    if (!keyframeSample) {
-      throw new Error(
-        `Sample ${keyframeSampleNum} not found in track (got ${allSamples.length} samples)`,
-      );
+    // If active decode is in progress and this frame is within its range,
+    // queue as a secondary waiter instead of aborting
+    if (this.activeDecode) {
+      const ad = this.activeDecode;
+      if (
+        frameIndex >= ad.decodeStartFrame &&
+        frameIndex <= ad.decodeEndFrame
+      ) {
+        return new Promise((resolve, reject) => {
+          ad.waiters.set(frameIndex, { resolve, reject });
+        });
+      }
+      // Frame is outside range — abort and restart
+      this.abortDecode();
     }
 
+    const keyframeIdx = this.findNearestKeyframe(frameIndex);
+    const endFrame = Math.min(
+      frameIndex + this.cacheSize,
+      this.metadata.totalFrames - 1,
+    );
+
     return new Promise<VideoFrame>((resolve, reject) => {
-      this.pendingResolve = resolve;
-      this.pendingReject = reject;
-      this.targetFrame = frameIndex;
-      this.decodedCount = 0;
-      this.decodeStartFrame = keyframeFrameIdx;
-
-      this.ensureDecoder();
-
-      this.mp4file.stop();
-
-      const seekTime = keyframeSample.cts / this.timescale;
-
-      // setExtractionOptions before starting extraction
-      if (this.mp4file.extractedTracks.length === 0) {
-        this.mp4file.setExtractionOptions(this.trackId);
-      }
-
-      this.mp4file.onSamples = (_id, _user, chunkSamples) => {
-        for (const sample of chunkSamples) {
-          if (!sample.data || sample.data.length === 0) continue;
-
-          try {
-            const chunk = new EncodedVideoChunk({
-              type: sample.is_sync ? "key" : "delta",
-              timestamp: Math.round((sample.cts / this.timescale) * 1_000_000),
-              duration: Math.round((sample.duration / this.timescale) * 1_000_000),
-              data: sample.data,
-            });
-
-            this.decoder!.decode(chunk);
-          } catch (chunkErr: any) {
-            console.error("decode failed for sample", sample.number, ":", chunkErr.message);
-          }
-        }
+      this.activeDecode = {
+        decodeStartFrame: keyframeIdx,
+        decodeEndFrame: endFrame,
+        decodedCount: 0,
+        waiters: new Map([[frameIndex, { resolve, reject }]]),
       };
 
-      this.mp4file.seek(seekTime, true);
-      this.mp4file.start();
+      console.log("FrameReader: decode", keyframeIdx, "→", endFrame, "(target:", frameIndex, ")");
+
+      this.ensureDecoder();
+      this.feedEncodedSamples(keyframeIdx, endFrame);
+      this.decoder!.flush().catch((err) => {
+        console.error("FrameReader: flush error:", err.message);
+      });
     });
   }
 
+  private feedEncodedSamples(fromFrame: number, toFrame: number): void {
+    const ts = this.metadata.timescale;
+
+    for (let f = fromFrame; f <= toFrame; f++) {
+      const s = this.samples[f];
+      if (!s) {
+        console.warn("FrameReader: no sample at", f);
+        continue;
+      }
+      if (s.offset === undefined) {
+        console.warn("FrameReader: sample", f, "no offset");
+        continue;
+      }
+      if (s.size === 0) {
+        console.warn("FrameReader: sample", f, "size 0");
+        continue;
+      }
+
+      try {
+        const data = new Uint8Array(this.videoBuffer, s.offset, s.size);
+        const chunk = new EncodedVideoChunk({
+          type: s.is_sync ? "key" : "delta",
+          timestamp: Math.round((s.cts / ts) * 1_000_000),
+          duration: Math.round((s.duration / ts) * 1_000_000),
+          data,
+        });
+        this.decoder!.decode(chunk);
+      } catch (err: any) {
+        console.error("FrameReader: decode() failed at sample", f, ":", err.message);
+      }
+    }
+  }
+
   private ensureDecoder(): void {
-    if (this.decoder && this.decoder.state !== "closed") return;
+    if (this.decoder && this.decoderConfigured) return;
 
     if (this.decoder) {
-      try { this.decoder.close(); } catch { /* closed already */ }
+      try { this.decoder.close(); } catch { /* ok */ }
       this.decoder = null;
     }
 
-    console.log("FrameReader: creating VideoDecoder...");
+    this.decoderConfigured = false;
+
     const { codec, codedWidth, codedHeight, description } = this.metadata;
+    console.log("FrameReader: creating VideoDecoder, codec:", codec);
 
     this.decoder = new VideoDecoder({
       output: (frame) => this.handleFrame(frame),
       error: (err) => {
-        console.error("VideoDecoder error:", err.message, err);
-        this.decoder = null;
-        this.pendingReject?.(new Error(`VideoDecoder error: ${err.message}`));
+        console.error("VideoDecoder error:", err.message);
+        this.decoderConfigured = false;
+        this.failAllWaiters(new Error(`VideoDecoder error: ${err.message}`));
       },
     });
 
-    const config: VideoDecoderConfig = {
-      codec,
-      description,
-      codedWidth,
-      codedHeight,
-    };
-
-    try {
-      this.decoder.configure(config);
-    } catch (configureErr: any) {
-      console.error("VideoDecoder.configure failed:", configureErr.message);
-      console.error("Config:", {
-        codec,
-        descLen: description?.length,
-        codedWidth,
-        codedHeight,
-      });
-      throw configureErr;
-    }
+    this.decoder.configure({ codec, description, codedWidth, codedHeight });
+    this.decoderConfigured = true;
+    console.log("FrameReader: decoder configured, state:", this.decoder.state);
   }
 
   private handleFrame(frame: VideoFrame): void {
-    const currentFrame = this.decodeStartFrame + this.decodedCount;
-    this.decodedCount++;
-
-    if (currentFrame < this.targetFrame) {
+    const ad = this.activeDecode;
+    if (!ad) {
       frame.close();
       return;
     }
 
-    if (currentFrame === this.targetFrame) {
-      this.mp4file.stop();
+    const currentFrame = ad.decodeStartFrame + ad.decodedCount;
+    ad.decodedCount++;
+
+    // Check if anyone is waiting for this exact frame
+    const waiter = ad.waiters.get(currentFrame);
+    if (waiter) {
       this.addToCache(currentFrame, frame);
-      console.log("FrameReader: decoded frame", currentFrame, "(", frame.displayWidth, "x", frame.displayHeight, ")");
-      this.pendingResolve?.(frame);
-      this.pendingResolve = null;
+      waiter.resolve(frame);
+      ad.waiters.delete(currentFrame);
+      // If no more waiters and we've decoded past the last one, stop
+      if (ad.waiters.size === 0 && currentFrame >= ad.decodeEndFrame) {
+        this.activeDecode = null;
+      }
       return;
     }
 
-    // Past target — cache and stop extraction when window is full
+    // Cache future frames for fast sequential access
     if (
-      currentFrame < this.targetFrame + this.cacheSize &&
+      currentFrame <= ad.decodeEndFrame &&
       !this.frameCache.has(currentFrame)
     ) {
       this.addToCache(currentFrame, frame);
@@ -265,24 +247,40 @@ export class FrameReader {
       frame.close();
     }
 
-    if (this.decodedCount >= this.cacheSize + (this.targetFrame - this.decodeStartFrame)) {
-      this.mp4file.stop();
+    // All done – stop tracking
+    if (currentFrame >= ad.decodeEndFrame && ad.waiters.size === 0) {
+      this.activeDecode = null;
     }
+  }
+
+  private abortDecode(): void {
+    this.failAllWaiters(new Error("Decode aborted"));
+    this.activeDecode = null;
+
+    if (this.decoder && this.decoderConfigured) {
+      this.decoderConfigured = false;
+      try { this.decoder.close(); } catch { /* ok */ }
+      this.decoder = null;
+    }
+  }
+
+  private failAllWaiters(err: Error): void {
+    if (!this.activeDecode) return;
+    for (const w of this.activeDecode.waiters.values()) {
+      w.reject(err);
+    }
+    this.activeDecode = null;
   }
 
   private findNearestKeyframe(target: number): number {
-    // Linear scan backward through keyframeIndices (they're sorted)
-    const kfs = this.metadata.keyframeIndices;
-    let best = 0;
-    for (const kf of kfs) {
-      if (kf <= target) best = kf;
-      else break;
+    for (let i = this.metadata.keyframeIndices.length - 1; i >= 0; i--) {
+      const kf = this.metadata.keyframeIndices[i];
+      if (kf <= target) return kf;
     }
-    return best;
+    return 0;
   }
 
   private addToCache(frameIndex: number, frame: VideoFrame): void {
-    // Evict farthest frame if cache is full
     if (this.frameCache.size >= this.cacheSize) {
       let farthest = frameIndex;
       let farthestDist = 0;
@@ -302,20 +300,18 @@ export class FrameReader {
   }
 
   close(): void {
-    this.mp4file.stop();
-    for (const frame of this.frameCache.values()) {
-      frame.close();
-    }
+    this.activeDecode = null;
+    for (const frame of this.frameCache.values()) frame.close();
     this.frameCache.clear();
-    if (this.decoder && this.decoder.state !== "closed") {
-      this.decoder.close();
+    if (this.decoder) {
+      try { this.decoder.close(); } catch { /* ok */ }
     }
     this.decoder = null;
+    this.decoderConfigured = false;
   }
 }
 
 function uppercaseCodec(codec: string): string {
-  // "avc1.64001f" → "avc1.64001F" (only hex part is case-sensitive in WebCodecs)
   const idx = codec.indexOf(".");
   if (idx === -1) return codec;
   return codec.slice(0, idx + 1) + codec.slice(idx + 1).toUpperCase();
@@ -329,7 +325,7 @@ function extractDescription(mp4file: MP4Box.ISOFile): Uint8Array {
   if (hvcC) return rebuildHVCC(hvcC as any);
 
   throw new Error(
-    "Could not extract codec description from MP4. Supported codecs: AVC (avcC), HEVC (hvcC)",
+    "Could not extract codec description from MP4. Supported: AVC (avcC), HEVC (hvcC)",
   );
 }
 
@@ -345,9 +341,7 @@ function rebuildAVCC(avcC: Record<string, unknown>): Uint8Array {
   const numSPS = spsList?.length ?? 0;
   const numPPS = ppsList?.length ?? 0;
 
-  let totalSize =
-    6 + // header (version, profile, compat, level, lenSize byte, numSPS byte)
-    1; // numPPS byte
+  let totalSize = 6 + 1;
   for (let i = 0; i < numSPS; i++) totalSize += 2 + spsList[i].length;
   for (let i = 0; i < numPPS; i++) totalSize += 2 + ppsList[i].length;
 
@@ -357,8 +351,8 @@ function rebuildAVCC(avcC: Record<string, unknown>): Uint8Array {
   buf[off++] = profile;
   buf[off++] = compat;
   buf[off++] = level;
-  buf[off++] = 0xfc | lenSize; // 6 reserved bits + lengthSizeMinusOne (2 bits)
-  buf[off++] = 0xe0 | (numSPS & 0x1f); // 3 reserved bits + numSPS (5 bits)
+  buf[off++] = 0xfc | lenSize;
+  buf[off++] = 0xe0 | (numSPS & 0x1f);
   for (let i = 0; i < numSPS; i++) {
     const len = spsList[i].length;
     buf[off++] = (len >> 8) & 0xff;
