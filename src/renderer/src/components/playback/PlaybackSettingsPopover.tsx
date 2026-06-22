@@ -53,6 +53,8 @@ export function PlaybackSettingsPopover() {
     setVidSpeed,
     graphWindowSeconds,
     setGraphWindowSeconds,
+    showVideo,
+    setShowVideo,
     showKeypoints,
     setShowKeypoints,
     config,
@@ -111,6 +113,12 @@ export function PlaybackSettingsPopover() {
             />
           </Group>
           <Divider />
+          <Switch
+            label="Video"
+            checked={showVideo}
+            onChange={(e) => setShowVideo(e.currentTarget.checked)}
+            size="xs"
+          />
           <Switch
             label="Keypoints"
             checked={showKeypoints}

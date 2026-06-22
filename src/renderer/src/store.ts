@@ -23,6 +23,7 @@ interface AppState {
   vidSpeed: number;
   focusSizeFrames: number;
 
+  showVideo: boolean;
   showKeypoints: boolean;
   jumpSeconds: number;
   graphWindowSeconds: number;
@@ -43,6 +44,7 @@ interface AppState {
   setVidSpeed: (speed: number) => void;
   setVideoMetadata: (meta: FrameMetadata | null) => void;
   setFocusSizeFrames: (n: number) => void;
+  setShowVideo: (show: boolean) => void;
   setShowKeypoints: (show: boolean) => void;
   setKeypointPcutoff: (pcutoff: number) => void;
   setKeypointRadius: (radius: number) => void;
@@ -77,6 +79,7 @@ export const useStore = create<AppState>((set, get) => ({
   vidSpeed: 1,
   focusSizeFrames: 5,
 
+  showVideo: true,
   showKeypoints: false,
   jumpSeconds: 5,
   graphWindowSeconds: 10,
@@ -108,6 +111,7 @@ export const useStore = create<AppState>((set, get) => ({
   setVidSpeed: (vidSpeed) => set({ vidSpeed }),
   setVideoMetadata: (videoMetadata) => set({ videoMetadata }),
   setFocusSizeFrames: (focusSizeFrames) => set({ focusSizeFrames }),
+  setShowVideo: (showVideo) => set({ showVideo }),
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
   setKeypointPcutoff: (keypointPcutoff) =>
     set((s) => ({
