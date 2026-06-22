@@ -1,4 +1,5 @@
 import { create } from "zustand";
+import type { FrameMetadata } from "./lib/frameReader";
 import type {
   Bout,
   AppConfig,
@@ -11,6 +12,7 @@ import type {
 interface AppState {
   paths: ExperimentPaths | null;
   config: AppConfig | null;
+  videoMetadata: FrameMetadata | null;
   numFrames: number;
   bouts: Bout[];
   keypointDefs: KeypointDef[];
@@ -39,6 +41,7 @@ interface AppState {
   setCurrentFrame: (frame: number) => void;
   setIsPlaying: (playing: boolean) => void;
   setVidSpeed: (speed: number) => void;
+  setVideoMetadata: (meta: FrameMetadata | null) => void;
   setFocusSizeFrames: (n: number) => void;
   setShowKeypoints: (show: boolean) => void;
   setKeypointPcutoff: (pcutoff: number) => void;
@@ -63,6 +66,7 @@ interface AppState {
 export const useStore = create<AppState>((set, get) => ({
   paths: null,
   config: null,
+  videoMetadata: null,
   numFrames: 0,
   bouts: [],
   keypointDefs: [],
@@ -102,6 +106,7 @@ export const useStore = create<AppState>((set, get) => ({
   setCurrentFrame: (currentFrame) => set({ currentFrame }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   setVidSpeed: (vidSpeed) => set({ vidSpeed }),
+  setVideoMetadata: (videoMetadata) => set({ videoMetadata }),
   setFocusSizeFrames: (focusSizeFrames) => set({ focusSizeFrames }),
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
   setKeypointPcutoff: (keypointPcutoff) =>

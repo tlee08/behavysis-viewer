@@ -1,20 +1,22 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bout, KeypointDef, KeypointFrame } from "../../shared/types";
 import { parseAppConfig, resolveExperimentPaths } from "../lib/fileManager";
+import { FrameReader, type FrameMetadata } from "../lib/frameReader";
 import { useStore } from "../store";
 
 export function useExperimentIO() {
-  const [videoUrl, setVideoUrl] = useState<string | null>(null);
+  const [reader, setReader] = useState<FrameReader | null>(null);
+  const [metadata, setMetadata] = useState<FrameMetadata | null>(null);
   const [status, setStatus] = useState(
     "Open a config JSON to begin  (File > Open)",
   );
-  const blobUrlRef = useRef<string | null>(null);
+  const readerRef = useRef<FrameReader | null>(null);
 
-  const { paths, bouts, loadExperiment } = useStore();
+  const { paths, bouts, loadExperiment, setVideoMetadata } = useStore();
 
   useEffect(() => {
     return () => {
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
+      readerRef.current?.close();
     };
   }, []);
 
@@ -33,19 +35,22 @@ export function useExperimentIO() {
       >;
       const appConfig = parseAppConfig(rawConfig);
 
+      // Load and decode video via WebCodecs
       const videoBytes = await window.electron.readFile(expPaths.videoPath);
-      if (blobUrlRef.current) URL.revokeObjectURL(blobUrlRef.current);
-      const blob = new Blob([videoBytes], { type: "video/mp4" });
-      const url = URL.createObjectURL(blob);
-      blobUrlRef.current = url;
-      setVideoUrl(url);
+      readerRef.current?.close();
+      const arrBuf = new Uint8Array(videoBytes).buffer;
+      const newReader = await FrameReader.init(arrBuf);
+      readerRef.current = newReader;
+      setReader(newReader);
+      setMetadata(newReader.metadata);
+      setVideoMetadata(newReader.metadata);
 
       let parsedBouts: Bout[] = [];
       try {
         const result = await window.electron.parseBehav(expPaths.behavsPath);
         parsedBouts = result.bouts;
       } catch {
-        // Behavs file absent — no bouts
+        // No bouts file — start with empty bout list
       }
 
       let keypointDefs: KeypointDef[] = [];
@@ -64,7 +69,7 @@ export function useExperimentIO() {
       loadExperiment(
         expPaths,
         appConfig,
-        appConfig.numFrames,
+        newReader.metadata.totalFrames,
         parsedBouts,
         keypointDefs,
         keypointFrames,
@@ -73,7 +78,7 @@ export function useExperimentIO() {
     } catch (err) {
       setStatus(`Error: ${String(err)}`);
     }
-  }, [loadExperiment]);
+  }, [loadExperiment, setVideoMetadata]);
 
   const save = useCallback(async () => {
     if (!paths) {
@@ -88,5 +93,5 @@ export function useExperimentIO() {
     }
   }, [paths, bouts]);
 
-  return { videoUrl, status, open, save };
+  return { reader, metadata, status, open, save };
 }

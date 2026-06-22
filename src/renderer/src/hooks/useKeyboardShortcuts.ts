@@ -15,11 +15,12 @@ export function useKeyboardShortcuts(): void {
         bouts,
         selectedBoutId,
         config,
+        videoMetadata,
         showKeypoints,
         focusSizeFrames,
         jumpSeconds,
       } = state;
-      const fps = config?.fps ?? 15;
+      const fps = videoMetadata?.fps ?? config?.fps ?? 15;
 
       switch (e.key) {
         case " ":

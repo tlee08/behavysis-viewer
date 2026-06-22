@@ -10,7 +10,7 @@ import { useExperimentIO } from "./hooks/useExperimentIO";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
 
 export default function App(): React.ReactElement {
-  const { videoUrl, status, open, save } = useExperimentIO();
+  const { reader, metadata, status, open, save } = useExperimentIO();
   useKeyboardShortcuts();
 
   return (
@@ -27,7 +27,7 @@ export default function App(): React.ReactElement {
             style={{ display: "flex", flexDirection: "column", height: "100%" }}
           >
             <Box style={{ flexShrink: 0 }}>
-              <VideoPane videoUrl={videoUrl} />
+              <VideoPane reader={reader} metadata={metadata} />
             </Box>
             <PlaybackBar />
             <Box style={{ flex: 1, overflow: "auto" }}>

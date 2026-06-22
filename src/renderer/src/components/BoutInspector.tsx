@@ -25,6 +25,7 @@ export function BoutInspector(): React.ReactElement {
     selectedBoutId,
     config,
     numFrames,
+    videoMetadata,
     interimBoutEdit,
     setInterimBoutEdit,
     updateBoutActual,
@@ -43,7 +44,7 @@ export function BoutInspector(): React.ReactElement {
     );
   }
 
-  const fps = config?.fps ?? 15;
+  const fps = videoMetadata?.fps ?? config?.fps ?? 15;
   const isEditing =
     interimBoutEdit !== null && interimBoutEdit.boutId === bout.id;
   const editStart = isEditing ? interimBoutEdit.start : bout.start;

@@ -28,7 +28,7 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
     setInterimBoutEdit,
     numFrames,
   } = useStore();
-  const fps = useStore((s) => s.config?.fps ?? 15);
+  const fps = useStore((s) => s.videoMetadata?.fps ?? s.config?.fps ?? 15);
   const visibleRange = useVisibleRange();
   const xMin = visibleRange[0] / fps;
   const xMax = visibleRange[1] / fps;
