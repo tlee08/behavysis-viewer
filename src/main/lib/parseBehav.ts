@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import pl from "nodejs-polars";
 import type { ActualValue, Bout } from "../../shared/types";
 import { UNSURE } from "../../shared/types";
@@ -107,6 +108,8 @@ export function parseBehavParquet(path: string): {
   bouts: Bout[];
   numFrames: number;
 } {
+  if (!existsSync(path)) return { bouts: [], numFrames: 0 };
+
   const df = pl.readParquet(path);
   const numRows = df.height;
   const row0Frame = getRow0Frame(df);

@@ -1,3 +1,4 @@
+import { existsSync } from "fs";
 import pl from "nodejs-polars";
 import { parseKptColumns } from "./columnNames";
 import type { KptColumn } from "./columnNames";
@@ -14,6 +15,8 @@ export function parseKeypointsParquet(
   path: string,
   pcutoff: number,
 ): { keypointDefs: KeypointDef[]; keypointFrames: KeypointFrame[] } {
+  if (!existsSync(path)) return { keypointDefs: [], keypointFrames: [] };
+
   const df = pl.readParquet(path);
   const row0Frame = getRow0Frame(df);
   const kptCols = parseKptColumns(df.columns);
