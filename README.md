@@ -5,15 +5,16 @@ A desktop app for reviewing binary classifier output from the [Behavysis](https:
 ## Setup
 
 ```bash
-npm install
-node .\node_modules\electron\index.js # May need for electron
-npm run dev       # development with hot reload
-npm run build     # production build
+pnpm install
+pnpm run dev       # development with hot reload
+pnpm run build     # production build
+pnpx electron .    # to run as non-dev app
+pnpm run package   # package into binary
 ```
 
 ## Usage
 
-1. **Open** — File > Open, select a `0_configs/{name}.json` config file.  
+1. **Open** — File > Open, select a `0_config/{name}.json` config file.  
    All other paths (video, parquet) are resolved automatically from the same directory tree.
 2. **Review bouts** — click a bout in the list, or click a bar in the timeline.
 3. **Score** — use the IS / NOT / UNSURE radio buttons, or hotkeys `1` / `2` / `3`.

@@ -47,6 +47,7 @@ export interface KeypointDef {
 
 export interface AppConfig {
   fps: number;
+  numFrames: number;
   keypointPcutoff: number;
   keypointRadius: number;
   widthPx: number;

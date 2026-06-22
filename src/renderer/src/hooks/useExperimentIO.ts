@@ -1,7 +1,7 @@
-import { useState, useCallback, useRef, useEffect } from "react";
-import { useStore } from "../store";
-import { resolveExperimentPaths, parseAppConfig } from "../lib/fileManager";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { Bout, KeypointDef, KeypointFrame } from "../../shared/types";
+import { parseAppConfig, resolveExperimentPaths } from "../lib/fileManager";
+import { useStore } from "../store";
 
 export function useExperimentIO() {
   const [videoUrl, setVideoUrl] = useState<string | null>(null);
@@ -41,13 +41,11 @@ export function useExperimentIO() {
       setVideoUrl(url);
 
       let parsedBouts: Bout[] = [];
-      let nf = 0;
       try {
         const result = await window.electron.parseBehav(expPaths.behavsPath);
         parsedBouts = result.bouts;
-        nf = result.numFrames;
       } catch {
-        // Behavs file absent — start with no bouts
+        // Behavs file absent — no bouts
       }
 
       let keypointDefs: KeypointDef[] = [];
@@ -66,7 +64,7 @@ export function useExperimentIO() {
       loadExperiment(
         expPaths,
         appConfig,
-        nf,
+        appConfig.numFrames,
         parsedBouts,
         keypointDefs,
         keypointFrames,

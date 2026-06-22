@@ -59,8 +59,10 @@ export function PlaybackSettingsPopover() {
     setFocusBout,
     config,
     setKeypointPcutoff,
+    setKeypointRadius,
   } = useStore();
   const pcutoff = config?.keypointPcutoff ?? 0.5;
+  const radius = config?.keypointRadius ?? 5;
 
   return (
     <Popover position="bottom-end" shadow="md" width={180}>
@@ -131,6 +133,22 @@ export function PlaybackSettingsPopover() {
             />
             <Text size="xs" c="dimmed">
               {pcutoff.toFixed(2)}
+            </Text>
+          </Group>
+          <Group gap={4} ml={28}>
+            <Slider
+              value={radius}
+              onChange={setKeypointRadius}
+              min={1}
+              max={20}
+              step={1}
+              size="xs"
+              w={80}
+              color="blue.4"
+              label={null}
+            />
+            <Text size="xs" c="dimmed">
+              {radius.toFixed(0)}px
             </Text>
           </Group>
           <Switch

@@ -44,6 +44,7 @@ interface AppState {
   setShowKeypoints: (show: boolean) => void;
   setFocusBout: (focus: boolean) => void;
   setKeypointPcutoff: (pcutoff: number) => void;
+  setKeypointRadius: (radius: number) => void;
   setJumpSeconds: (seconds: number) => void;
   setGraphWindowSeconds: (seconds: number) => void;
 
@@ -110,6 +111,10 @@ export const useStore = create<AppState>((set) => ({
   setKeypointPcutoff: (keypointPcutoff) =>
     set((s) => ({
       config: s.config ? { ...s.config, keypointPcutoff } : null,
+    })),
+  setKeypointRadius: (keypointRadius) =>
+    set((s) => ({
+      config: s.config ? { ...s.config, keypointRadius } : null,
     })),
   setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),

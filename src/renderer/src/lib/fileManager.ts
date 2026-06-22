@@ -39,6 +39,7 @@ export function resolveExperimentPaths(configPath: string): ExperimentPaths {
 
 export function parseAppConfig(raw: Record<string, unknown>): {
   fps: number;
+  numFrames: number;
   keypointPcutoff: number;
   keypointRadius: number;
   widthPx: number;
@@ -46,15 +47,15 @@ export function parseAppConfig(raw: Record<string, unknown>): {
 } {
   const auto: any = raw.auto ?? {};
   const user: any = raw.user ?? {};
-  const formatVid: any = user.format_vid ?? {};
   const evaluateVid: any = user.evaluate_vid ?? {};
   const autoFormattedVid: any = auto.formatted_vid ?? {};
 
   return {
-    fps: Number(autoFormattedVid.fps ?? formatVid.fps ?? 15),
-    keypointPcutoff: Number(evaluateVid.pcutoff ?? 0.6),
-    keypointRadius: Number(evaluateVid.radius ?? 5),
-    widthPx: Number(autoFormattedVid.width_px ?? formatVid.width_px ?? 640),
-    heightPx: Number(autoFormattedVid.height_px ?? formatVid.height_px ?? 480),
+    fps: Number(autoFormattedVid.fps),
+    numFrames: Number(autoFormattedVid.total_frames),
+    keypointPcutoff: Number(evaluateVid.pcutoff),
+    keypointRadius: Number(evaluateVid.radius),
+    widthPx: Number(autoFormattedVid.width_px),
+    heightPx: Number(autoFormattedVid.height_px),
   };
 }
