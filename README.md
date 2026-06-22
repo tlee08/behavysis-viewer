@@ -6,6 +6,7 @@ A desktop app for reviewing binary classifier output from the [Behavysis](https:
 
 ```bash
 npm install
+node .\node_modules\electron\index.js # May need for electron
 npm run dev       # development with hot reload
 npm run build     # production build
 ```
@@ -20,19 +21,19 @@ npm run build     # production build
 
 ### Hotkeys
 
-| Key | Action |
-|-----|--------|
-| `Space` | Play / pause |
-| `←` / `→` | Jump ±5 seconds |
-| `K` | Toggle keypoint overlay |
-| `F` | Toggle focus mode (pause at bout end) |
-| `R` | Replay selected bout |
-| `1` / `2` / `3` | Score bout as IS / NOT / UNSURE |
+| Key             | Action                                |
+| --------------- | ------------------------------------- |
+| `Space`         | Play / pause                          |
+| `←` / `→`       | Jump ±5 seconds                       |
+| `K`             | Toggle keypoint overlay               |
+| `F`             | Toggle focus mode (pause at bout end) |
+| `R`             | Replay selected bout                  |
+| `1` / `2` / `3` | Score bout as IS / NOT / UNSURE       |
 
 ## Parquet column format
 
 The behaviour parquet uses pandas-style 2-level MultiIndex column names stored
-as Python tuple strings, e.g. `"('attack', 'actual')"`.  If your pipeline writes
+as Python tuple strings, e.g. `"('attack', 'actual')"`. If your pipeline writes
 a different format (e.g. flat `attack__actual`) edit `parseBehavColumns` in
 `src/renderer/src/lib/parseParquet.ts`.
 
@@ -45,20 +46,22 @@ Any per-frame scalar series can be displayed below the bout timeline.
 From anywhere in the renderer, call:
 
 ```typescript
-const { addGraphSeries } = useStore.getState()
+const { addGraphSeries } = useStore.getState();
 addGraphSeries({
-  label: 'Mouse speed (mm/s)',
-  color: '#f472b6',
-  values: speedFloat32Array,  // index = frame number
-})
+  label: "Mouse speed (mm/s)",
+  color: "#f472b6",
+  values: speedFloat32Array, // index = frame number
+});
 ```
 
 Then mount a `<DataGraphPane>` in `App.tsx`:
 
 ```tsx
-{graphSeries.map((s) => (
-  <DataGraphPane key={s.label} series={s} width={VIDEO_WIDTH} height={70} />
-))}
+{
+  graphSeries.map((s) => (
+    <DataGraphPane key={s.label} series={s} width={VIDEO_WIDTH} height={70} />
+  ));
+}
 ```
 
 This is already wired up — just add series to the store and they appear automatically.

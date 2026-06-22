@@ -9,7 +9,8 @@
     "build": "electron-vite build",
     "preview": "electron-vite preview",
     "typecheck": "tsc --noEmit",
-    "postinstall": "electron-rebuild"
+    "postinstall": "electron-builder install-app-deps",
+    "package": "pnpm run build && electron-builder"
   },
   "dependencies": {
     "@mantine/core": "^7.17.8",
@@ -30,6 +31,7 @@
     "@types/react-dom": "^18.3.7",
     "@vitejs/plugin-react": "^4.7.0",
     "electron": "^33.4.11",
+    "electron-builder": "^26.15.3",
     "electron-vite": "^2.3.0",
     "typescript": "^5.9.3",
     "vite": "^5.4.21"

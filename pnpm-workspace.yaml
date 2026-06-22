@@ -1,5 +1,6 @@
 allowBuilds:
-  '@swc/core': true
+  "@swc/core": true
   electron: true
+  electron-winstaller: true
   esbuild: true
   lzma-native: false
