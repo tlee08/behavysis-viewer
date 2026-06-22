@@ -1,13 +1,20 @@
 /**
- * Parse pandas MultiIndex column names stored as Python tuple strings
- * inside the parquet/Arrow schema.
+ * Parse 2-level column names from behaviour parquet files.
  *
- * Behaviour DF (2-level):  "('attack', 'actual')"
+ * Old format (Python tuple):  "('attack', 'actual')"
+ * New format (double-underscore): "attack__actual"
+ *
  * Keypoints DF (4-level):  "('DLC_scorer', 'mouse1', 'Nose', 'x')"
  */
 
-/** Parse a 2-level Python tuple string → [a, b] or null. */
+/** Parse a 2-level column name → [behav, subcol] or null. */
 export function parseTuple2(s: string): [string, string] | null {
+  // New format: behav__subcol (double underscore delimiter)
+  const idx = s.indexOf("__");
+  if (idx > 0) {
+    return [s.slice(0, idx), s.slice(idx + 2)];
+  }
+  // Old format: Python tuple string ('behav', 'subcol')
   const m = s.match(/^\(\s*'(.+?)'\s*,\s*'(.+?)'\s*\)$/);
   return m ? [m[1], m[2]] : null;
 }

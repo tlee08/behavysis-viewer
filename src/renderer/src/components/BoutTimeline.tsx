@@ -1,159 +1,302 @@
 import { Box, useMantineTheme } from "@mantine/core";
-import * as echarts from "echarts";
-import { useEffect, useRef } from "react";
+import type Konva from "konva";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { Layer, Line, Rect, Stage, Text } from "react-konva";
+import { ACTUAL_COLORS } from "../../../shared/types";
 import { useFps } from "../hooks/useFps";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useStore } from "../store";
-import { ACTUAL_COLORS } from "../../../shared/types";
 
 interface Props {
   height?: number;
 }
 
 const ROW_HEIGHT = 24;
+const HANDLE_W = 8;
+const MARGIN = { top: 4, right: 8, bottom: 24, left: 72 };
 
 export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
-  const chartRef = useRef<echarts.ECharts | null>(null);
-  const selectBoutRef = useRef(useStore.getState().selectBout);
+  const [stageWidth, setStageWidth] = useState(0);
   const theme = useMantineTheme();
-  const { bouts, selectBout, selectedBoutId } = useStore();
+
+  const {
+    bouts,
+    selectBout,
+    selectedBoutId,
+    currentFrame,
+    interimBoutEdit,
+    setInterimBoutEdit,
+    numFrames,
+  } = useStore();
   const fps = useFps();
   const visibleRange = useVisibleRange();
   const xMin = visibleRange[0] / fps;
   const xMax = visibleRange[1] / fps;
 
-  selectBoutRef.current = selectBout;
-
   useEffect(() => {
     const node = containerRef.current;
     if (!node) return;
-
-    const chart = echarts.init(node, undefined, {
-      width: node.clientWidth,
-      height,
-    });
-    chartRef.current = chart;
-
+    setStageWidth(node.clientWidth);
     const ro = new ResizeObserver(() => {
-      const w = containerRef.current?.clientWidth;
-      if (w) chart.resize({ width: w, height });
-    });
-    ro.observe(node);
-
-    return () => {
-      ro.disconnect();
-      chart.dispose();
-      chartRef.current = null;
-    };
-  }, [height]);
-
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart) return;
-
-    chart.on("click", { element: "bout-bar" }, (params: any) => {
-      if (params.info !== undefined) {
-        selectBoutRef.current(params.info);
+      if (containerRef.current) {
+        setStageWidth(containerRef.current.clientWidth);
       }
     });
+    ro.observe(node);
+    return () => ro.disconnect();
   }, []);
 
-  useEffect(() => {
-    const chart = chartRef.current;
-    if (!chart || bouts.length === 0) {
-      chart?.clear();
-      return;
+  const chartWidth = stageWidth - MARGIN.left - MARGIN.right;
+  const chartHeight = height - MARGIN.top - MARGIN.bottom;
+
+  const behavNames = useMemo(
+    () => [...new Set(bouts.map((b) => b.behav))],
+    [bouts],
+  );
+
+  const rowHeight =
+    behavNames.length > 0 ? chartHeight / behavNames.length : chartHeight;
+  const barH = Math.min(ROW_HEIGHT * 0.7, rowHeight * 0.7);
+
+  const frameToX = useCallback(
+    (frame: number): number => {
+      const sec = frame / fps;
+      const ratio = chartWidth > 0 ? (sec - xMin) / (xMax - xMin) : 0;
+      return MARGIN.left + ratio * chartWidth;
+    },
+    [fps, xMin, xMax, chartWidth],
+  );
+
+  const xToFrame = useCallback(
+    (x: number): number => {
+      const ratio = chartWidth > 0 ? (x - MARGIN.left) / chartWidth : 0;
+      return Math.round(ratio * (xMax - xMin) * fps + xMin * fps);
+    },
+    [fps, xMin, xMax, chartWidth],
+  );
+
+  const secToX = useCallback(
+    (sec: number): number => {
+      const ratio = chartWidth > 0 ? (sec - xMin) / (xMax - xMin) : 0;
+      return MARGIN.left + ratio * chartWidth;
+    },
+    [xMin, xMax, chartWidth],
+  );
+
+  const behavToY = useCallback(
+    (behav: string): number =>
+      MARGIN.top + behavNames.indexOf(behav) * rowHeight + rowHeight / 2,
+    [behavNames, rowHeight],
+  );
+
+  const xTicks = useMemo(() => {
+    if (chartWidth <= 0) return [];
+    const step = (xMax - xMin) / 4;
+    const ticks: number[] = [];
+    for (let i = 0; i <= 4; i++) {
+      ticks.push(xMin + i * step);
     }
+    return ticks;
+  }, [xMin, xMax, chartWidth]);
 
-    const behavNames = [...new Set(bouts.map((b) => b.behav))];
-    const data = bouts.map((b) => [
-      b.start / fps,
-      (b.stop + 1) / fps,
-      b.behav,
-      ACTUAL_COLORS[b.actual],
-      b.id,
-      b.id === selectedBoutId ? 1 : 0,
-    ]);
+  const selectedBout = useMemo(
+    () =>
+      selectedBoutId !== null
+        ? (bouts.find((b) => b.id === selectedBoutId) ?? null)
+        : null,
+    [bouts, selectedBoutId],
+  );
 
-    chart.setOption(
-      {
-        grid: { top: 4, right: 8, bottom: 24, left: 72 },
-        xAxis: {
-          type: "value",
-          min: xMin,
-          max: xMax,
-          interval: (xMax - xMin) / 4,
-          axisLine: { lineStyle: { color: theme.colors.dark[4] } },
-          axisTick: { show: true, lineStyle: { color: theme.colors.dark[4] } },
-          axisLabel: {
-            show: true,
-            color: theme.colors.dark[2],
-            fontSize: 11,
-            formatter: (v: number) => `${v.toFixed(1)}s`,
-          },
-          splitLine: { show: false },
-        },
-        yAxis: {
-          type: "category",
-          data: behavNames,
-          position: "left",
-          axisLabel: {
-            color: theme.colors.dark[2],
-            fontSize: 11,
-            fontFamily: "monospace",
-          },
-          axisTick: { show: false },
-          axisLine: { show: false },
-        },
-        series: [
-          {
-            type: "custom",
-            encode: { x: [0, 1], y: 2 },
-            renderItem: (_params: any, api: any) => {
-              const start = api.value(0) as number;
-              const stop = api.value(1) as number;
-              const behav = api.value(2) as string;
-              const color = api.value(3) as string;
-              const isSelected = api.value(5) as number;
+  const ghostVisible =
+    interimBoutEdit !== null &&
+    selectedBout !== null &&
+    interimBoutEdit.boutId === selectedBout.id;
 
-              const [x0, y] = api.coord([start, behav]);
-              const [x1] = api.coord([stop, behav]);
-              const barH = Math.min(ROW_HEIGHT * 0.7, api.size([1])[1] * 0.7);
+  const ghostX = ghostVisible ? frameToX(interimBoutEdit!.start) : 0;
+  const ghostEndX = ghostVisible ? frameToX(interimBoutEdit!.stop) : 0;
+  const ghostWidth = Math.max(ghostEndX - ghostX, 2);
+  const ghostY = ghostVisible ? behavToY(selectedBout!.behav) - barH / 2 : 0;
+  const ghostColor = ghostVisible
+    ? ACTUAL_COLORS[selectedBout!.actual]
+    : "#fff";
 
-              return {
-                type: "rect",
-                shape: {
-                  x: x0,
-                  y: y - barH / 2,
-                  width: Math.max(x1 - x0, 2),
-                  height: barH,
-                },
-                style: {
-                  fill: isSelected ? color : color + "BF",
-                  stroke: isSelected ? theme.white : undefined,
-                  lineWidth: isSelected ? 1.5 : 0,
-                },
-                name: "bout-bar",
-                info: api.value(4),
-              };
-            },
-            data,
-          },
-        ],
-        backgroundColor: "#1a1a2e",
-        animation: false,
-      },
-      { notMerge: true },
+  const handleDragBound = useCallback(
+    (side: "start" | "stop", pos: { x: number; y: number }) => {
+      const leftBound = MARGIN.left - HANDLE_W / 2;
+      const rightBound = MARGIN.left + chartWidth - HANDLE_W / 2;
+      if (side === "start") {
+        const maxX = ghostEndX - 2 - HANDLE_W / 2;
+        return {
+          x: Math.max(leftBound, Math.min(pos.x, maxX)),
+          y: ghostY,
+        };
+      }
+      const minX = ghostX + 2 - HANDLE_W / 2;
+      return {
+        x: Math.max(minX, Math.min(pos.x, rightBound)),
+        y: ghostY,
+      };
+    },
+    [ghostX, ghostEndX, ghostY, chartWidth],
+  );
+
+  const handleDragEnd = useCallback(
+    (side: "start" | "stop", e: Konva.KonvaEventObject<DragEvent>) => {
+      if (!interimBoutEdit) return;
+      const handleX = e.target.x();
+      const edgeX = handleX + HANDLE_W / 2;
+      const frame = xToFrame(edgeX);
+      const clamped = Math.max(0, Math.min(frame, numFrames - 1));
+
+      if (side === "start" && clamped < interimBoutEdit.stop) {
+        setInterimBoutEdit({ ...interimBoutEdit, start: clamped });
+      } else if (side === "stop" && clamped > interimBoutEdit.start) {
+        setInterimBoutEdit({ ...interimBoutEdit, stop: clamped });
+      }
+    },
+    [interimBoutEdit, xToFrame, numFrames, setInterimBoutEdit],
+  );
+
+  if (bouts.length === 0 || stageWidth === 0) {
+    return (
+      <Box bg="#1a1a2e" style={{ flexShrink: 0 }}>
+        <div
+          ref={containerRef}
+          style={{ width: "100%", height: `${height}px` }}
+        />
+      </Box>
     );
-  }, [bouts, selectedBoutId, xMin, xMax, fps, theme]);
+  }
+
+  const currentTimeX = frameToX(currentFrame);
 
   return (
     <Box bg="#1a1a2e" style={{ flexShrink: 0 }}>
-      <div
-        ref={containerRef}
-        style={{ width: "100%", height: `${height}px` }}
-      />
+      <div ref={containerRef} style={{ width: "100%", height: `${height}px` }}>
+        <Stage width={stageWidth} height={height}>
+          <Layer>
+            <Rect
+              x={0}
+              y={0}
+              width={stageWidth}
+              height={height}
+              fill="#1a1a2e"
+            />
+            {xTicks.map((t, i) => (
+              <Text
+                key={`tick-${i}`}
+                x={secToX(t)}
+                y={height - MARGIN.bottom + 4}
+                text={`${t.toFixed(1)}s`}
+                fontSize={11}
+                fill={theme.colors.dark[2]}
+                align="center"
+              />
+            ))}
+            <Line
+              points={[
+                MARGIN.left,
+                height - MARGIN.bottom,
+                MARGIN.left + chartWidth,
+                height - MARGIN.bottom,
+              ]}
+              stroke={theme.colors.dark[4]}
+              strokeWidth={1}
+            />
+            {behavNames.map((name) => (
+              <Text
+                key={`label-${name}`}
+                x={MARGIN.left - 4}
+                y={behavToY(name) - 7}
+                text={name}
+                fontSize={11}
+                fill={theme.colors.dark[2]}
+                align="right"
+                fontFamily="monospace"
+              />
+            ))}
+          </Layer>
+
+          <Layer>
+            {bouts.map((b) => {
+              const x0 = frameToX(b.start);
+              const x1 = frameToX(b.stop + 1);
+              const y = behavToY(b.behav) - barH / 2;
+              const isSelected = b.id === selectedBoutId;
+              const color = ACTUAL_COLORS[b.actual];
+              return (
+                <Rect
+                  key={`bout-${b.id}`}
+                  x={x0}
+                  y={y}
+                  width={Math.max(x1 - x0, 2)}
+                  height={barH}
+                  fill={isSelected ? color : color + "BF"}
+                  stroke={isSelected ? theme.white : undefined}
+                  strokeWidth={isSelected ? 1.5 : 0}
+                  onClick={() => selectBout(b.id)}
+                />
+              );
+            })}
+          </Layer>
+
+          {ghostVisible && (
+            <Layer>
+              <Rect
+                x={ghostX}
+                y={ghostY}
+                width={ghostWidth}
+                height={barH}
+                fill={ghostColor + "40"}
+                stroke={ghostColor}
+                strokeWidth={1}
+                dash={[4, 4]}
+                listening={false}
+              />
+              <Rect
+                x={ghostX - HANDLE_W / 2}
+                y={ghostY}
+                width={HANDLE_W}
+                height={barH}
+                fill={theme.white}
+                stroke={ghostColor}
+                strokeWidth={1}
+                draggable
+                dragBoundFunc={(pos) => handleDragBound("start", pos)}
+                onDragEnd={(e) => handleDragEnd("start", e)}
+              />
+              <Rect
+                x={ghostEndX - HANDLE_W / 2}
+                y={ghostY}
+                width={HANDLE_W}
+                height={barH}
+                fill={theme.white}
+                stroke={ghostColor}
+                strokeWidth={1}
+                draggable
+                dragBoundFunc={(pos) => handleDragBound("stop", pos)}
+                onDragEnd={(e) => handleDragEnd("stop", e)}
+              />
+            </Layer>
+          )}
+
+          <Layer>
+            <Line
+              points={[
+                currentTimeX,
+                MARGIN.top,
+                currentTimeX,
+                height - MARGIN.bottom,
+              ]}
+              stroke={theme.white}
+              strokeWidth={1.5}
+              dash={[3, 3]}
+              listening={false}
+            />
+          </Layer>
+        </Stage>
+      </div>
     </Box>
   );
 }

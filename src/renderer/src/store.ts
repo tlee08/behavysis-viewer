@@ -48,8 +48,17 @@ interface AppState {
   setGraphWindowSeconds: (seconds: number) => void;
 
   selectBout: (id: number | null) => void;
+  interimBoutEdit: {
+    boutId: number;
+    start: number;
+    stop: number;
+  } | null;
+  setInterimBoutEdit: (
+    edit: { boutId: number; start: number; stop: number } | null,
+  ) => void;
   updateBoutActual: (id: number, actual: ActualValue) => void;
   updateBoutUserDefined: (id: number, key: string, value: ActualValue) => void;
+  updateBoutRange: (id: number, start: number, stop: number) => void;
 }
 
 export const useStore = create<AppState>((set) => ({
@@ -105,7 +114,10 @@ export const useStore = create<AppState>((set) => ({
   setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
 
-  selectBout: (selectedBoutId) => set({ selectedBoutId }),
+  selectBout: (selectedBoutId) => set({ selectedBoutId, interimBoutEdit: null }),
+
+  interimBoutEdit: null,
+  setInterimBoutEdit: (interimBoutEdit) => set({ interimBoutEdit }),
 
   updateBoutActual: (id, actual) =>
     set((s) => ({
@@ -117,6 +129,19 @@ export const useStore = create<AppState>((set) => ({
       bouts: s.bouts.map((b) =>
         b.id === id
           ? { ...b, userDefined: { ...b.userDefined, [key]: value } }
+          : b,
+      ),
+    })),
+
+  updateBoutRange: (id, start, stop) =>
+    set((s) => ({
+      bouts: s.bouts.map((b) =>
+        b.id === id
+          ? {
+              ...b,
+              start: Math.max(0, start),
+              stop: Math.min(s.numFrames - 1, Math.max(start, stop)),
+            }
           : b,
       ),
     })),

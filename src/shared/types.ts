@@ -1,13 +1,22 @@
 // Types shared between main process (parsing via nodejs-polars)
 // and renderer process (Zustand store + UI components).
 
-// -1 = unsure/unreviewed, 0 = not behaviour, 1 = is behaviour
-export type ActualValue = -1 | 0 | 1;
+// 1=TRUE_POS (model bout, reviewer confirms IS behaviour)
+// -1=FALSE_POS (model bout, reviewer says NOT behaviour)
+// 0=TRUE_NEG (no bout — gap between bouts)
+// -2=UNSURE (model bout, not reviewed yet)
+export type ActualValue = -2 | -1 | 0 | 1;
+
+export const TRUE_POS = 1 satisfies ActualValue;
+export const FALSE_POS = -1 satisfies ActualValue;
+export const TRUE_NEG = 0 satisfies ActualValue;
+export const UNSURE = -2 satisfies ActualValue;
 
 export const ACTUAL_COLORS: Record<ActualValue, string> = {
-  1: "#22c55e", // green  — IS behaviour
-  0: "#ef4444", // red    — NOT behaviour
-  [-1]: "#eab308", // yellow — unsure
+  [TRUE_POS]: "#22c55e",   // green  — IS behaviour
+  [FALSE_POS]: "#ef4444",  // red    — NOT behaviour
+  [TRUE_NEG]: "#6b7280",   // gray   — not a bout
+  [UNSURE]: "#eab308",     // yellow — unreviewed
 };
 
 export interface Bout {

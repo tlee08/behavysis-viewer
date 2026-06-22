@@ -79,15 +79,15 @@ export function useKeyboardShortcuts(): void {
         }
         case "1":
           if (selectedBoutId !== null)
-            state.updateBoutActual(selectedBoutId, 1);
+            state.updateBoutActual(selectedBoutId, 1); // TRUE_POS
           break;
         case "2":
           if (selectedBoutId !== null)
-            state.updateBoutActual(selectedBoutId, 0);
+            state.updateBoutActual(selectedBoutId, -1); // FALSE_POS
           break;
         case "3":
           if (selectedBoutId !== null)
-            state.updateBoutActual(selectedBoutId, -1);
+            state.updateBoutActual(selectedBoutId, -2); // UNSURE
           break;
       }
     };

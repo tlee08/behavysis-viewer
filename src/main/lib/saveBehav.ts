@@ -1,13 +1,35 @@
 import pl from "nodejs-polars";
-import { getRow0Frame, toNumber } from "./parquetUtils";
 import type { Bout } from "../../shared/types";
+import { parseTuple2 } from "./columnNames";
+import { getRow0Frame, toNumber } from "./parquetUtils";
+
+/**
+ * Read an existing column in either old `('behav', 'subcol')` or new
+ * `behav__subcol` format.  Returns null if the column doesn't exist.
+ */
+function readColumn(
+  df: pl.DataFrame,
+  behav: string,
+  subcol: string,
+): Int8Array | null {
+  const newName = `${behav}__${subcol}`;
+  if (df.columns.includes(newName)) {
+    return Int8Array.from(df.getColumn(newName).toArray(), toNumber);
+  }
+  const oldName = `('${behav}', '${subcol}')`;
+  if (df.columns.includes(oldName)) {
+    return Int8Array.from(df.getColumn(oldName).toArray(), toNumber);
+  }
+  return null;
+}
 
 /**
  * Save edited bouts back to the original parquet file (overwrites in-place).
  *
- * Reads the original file to preserve all columns (including 'pred' and any
- * user-defined columns), then applies bout edits to the 'actual' and
- * user-defined columns before writing back.
+ * Bout existence is stored in the 'actual' column using the new
+ * `behav__actual` naming convention.  The 'pred' column is dropped entirely.
+ * Old-format column names `('behav', 'col')` are read for backward
+ * compatibility but never written.
  */
 export function saveBehavParquet(path: string, bouts: Bout[]): void {
   if (bouts.length === 0) return;
@@ -16,7 +38,7 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
   const numRows = df.height;
   const row0Frame = getRow0Frame(df);
 
-  // Track which columns need updating and build new values
+  // Track column updates keyed by new-format name (behav__subcol)
   const columnUpdates = new Map<string, Int8Array>();
 
   for (const bout of bouts) {
@@ -24,15 +46,10 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
     const stopRow = bout.stop - row0Frame;
     const effectiveStop = Math.min(stopRow, numRows - 1);
 
-    // Actual column
-    const actualCol = `('${bout.behav}', 'actual')`;
+    // Actual column — start from all zeros (TRUE_NEG), fill bout range
+    const actualCol = `${bout.behav}__actual`;
     if (!columnUpdates.has(actualCol)) {
-      columnUpdates.set(
-        actualCol,
-        df.columns.includes(actualCol)
-          ? Int8Array.from(df.getColumn(actualCol).toArray(), toNumber)
-          : new Int8Array(numRows),
-      );
+      columnUpdates.set(actualCol, new Int8Array(numRows));
     }
     const actualVec = columnUpdates.get(actualCol)!;
     for (let f = startRow; f <= effectiveStop; f++) {
@@ -41,13 +58,11 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
 
     // User-defined columns
     for (const [udKey, udValue] of Object.entries(bout.userDefined)) {
-      const udCol = `('${bout.behav}', '${udKey}')`;
+      const udCol = `${bout.behav}__${udKey}`;
       if (!columnUpdates.has(udCol)) {
         columnUpdates.set(
           udCol,
-          df.columns.includes(udCol)
-            ? Int8Array.from(df.getColumn(udCol).toArray(), toNumber)
-            : new Int8Array(numRows),
+          readColumn(df, bout.behav, udKey) ?? new Int8Array(numRows),
         );
       }
       const udVec = columnUpdates.get(udCol)!;
@@ -57,12 +72,31 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
     }
   }
 
-  // Apply column updates: drop old, add new Series
+  // Drop all pred columns (both old and new formats)
   let result = df;
-  for (const [colName, newValues] of columnUpdates) {
-    result = result.drop(colName);
+  for (const name of df.columns) {
+    const parsed = parseTuple2(name);
+    if (parsed && parsed[1] === "pred") {
+      result = result.drop(name);
+    }
+  }
+
+  // Replace old/new column variants with new-format columns
+  for (const [newName, newValues] of columnUpdates) {
+    const parsed = parseTuple2(newName)!;
+    const behav = parsed[0];
+    const subcol = parsed[1];
+
+    // Drop both old and new format variants if they exist
+    const oldName = `('${behav}', '${subcol}')`;
+    for (const name of [oldName, newName]) {
+      if (result.columns.includes(name)) {
+        result = result.drop(name);
+      }
+    }
+
     result = result.hstack([
-      pl.Series(colName, Array.from(newValues), pl.Int8),
+      pl.Series(newName, Array.from(newValues), pl.Int8),
     ]);
   }
 
