@@ -1,12 +1,23 @@
-import { useEffect, useRef, useState } from "react";
+import { useMantineTheme } from "@mantine/core";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Layer, Line, Rect, Stage, Text } from "react-konva";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useStore } from "../store";
 
 const COLORS = [
-  "#22c55e", "#ef4444", "#3b82f6", "#eab308", "#a855f7",
-  "#06b6d4", "#f97316", "#ec4899", "#84cc16", "#6366f1",
+  "#22c55e",
+  "#ef4444",
+  "#3b82f6",
+  "#eab308",
+  "#a855f7",
+  "#06b6d4",
+  "#f97316",
+  "#ec4899",
+  "#84cc16",
+  "#6366f1",
 ];
+
+const MARGIN = { left: 30, right: 30, bottom: 20 };
 
 interface Props {
   height: number;
@@ -15,6 +26,7 @@ interface Props {
 export function FeatureGraph({ height }: Props) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [stageWidth, setStageWidth] = useState(600);
+  const theme = useMantineTheme();
 
   const {
     featureData,
@@ -27,6 +39,7 @@ export function FeatureGraph({ height }: Props) {
   } = useStore();
 
   const [startFrame, endFrame] = useVisibleRange();
+  const fps = videoMetadata?.fps ?? config?.fps ?? 15;
   const dataOffset = config?.startFrame ?? 0;
 
   useEffect(() => {
@@ -39,19 +52,35 @@ export function FeatureGraph({ height }: Props) {
     return () => ro.disconnect();
   }, []);
 
-  if (selectedFeatureColumns.length === 0) {
-    return <div ref={containerRef} style={{ width: "100%", height, flexShrink: 0 }} />;
-  }
-
-  const frameCount = endFrame - startFrame + 1;
-  if (frameCount <= 0) {
-    return <div ref={containerRef} style={{ width: "100%", height, flexShrink: 0 }} />;
-  }
+  const chartWidth = stageWidth - MARGIN.left - MARGIN.right;
 
   const toX = (f: number) =>
-    ((f - startFrame) / (endFrame - startFrame)) * stageWidth;
+    MARGIN.left + ((f - startFrame) / (endFrame - startFrame)) * chartWidth;
 
-  const cursorX = toX(currentFrame);
+  const curX = toX(currentFrame);
+
+  const xMinSec = startFrame / fps;
+  const xMaxSec = endFrame / fps;
+
+  const xTicks = useMemo(() => {
+    if (chartWidth <= 0) return [];
+    const step = (xMaxSec - xMinSec) / 4;
+    const ticks: number[] = [];
+    for (let i = 0; i <= 4; i++) ticks.push(xMinSec + i * step);
+    return ticks;
+  }, [xMinSec, xMaxSec, chartWidth]);
+
+  const secToX = (sec: number) =>
+    MARGIN.left + ((sec - xMinSec) / (xMaxSec - xMinSec)) * chartWidth;
+
+  if (endFrame <= startFrame || selectedFeatureColumns.length === 0) {
+    return (
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height, flexShrink: 0 }}
+      />
+    );
+  }
 
   const global = featureYGlobal;
 
@@ -65,12 +94,11 @@ export function FeatureGraph({ height }: Props) {
 
       const visStart = Math.max(startFrame, dataOffset);
       const visEnd = Math.min(endFrame, dataOffset + raw.length - 1);
-      const src =
-        global
-          ? raw
-          : visEnd >= visStart
-            ? raw.subarray(visStart - dataOffset, visEnd + 1 - dataOffset)
-            : new Float64Array(0);
+      const src = global
+        ? raw
+        : visEnd >= visStart
+          ? raw.subarray(visStart - dataOffset, visEnd + 1 - dataOffset)
+          : new Float64Array(0);
 
       for (let i = 0; i < src.length; i++) {
         const v = src[i];
@@ -96,10 +124,7 @@ export function FeatureGraph({ height }: Props) {
       continue;
     }
 
-    const slice = raw.subarray(
-      visStart - dataOffset,
-      visEnd + 1 - dataOffset,
-    );
+    const slice = raw.subarray(visStart - dataOffset, visEnd + 1 - dataOffset);
 
     // Per-column stats for minmax/zscore modes
     let cMin = Infinity,
@@ -143,28 +168,74 @@ export function FeatureGraph({ height }: Props) {
     lines.push({ color: COLORS[ci % COLORS.length], points, label: col });
   }
 
+  if (lines.length === 0) {
+    return (
+      <div
+        ref={containerRef}
+        style={{ width: "100%", height, flexShrink: 0 }}
+      />
+    );
+  }
+
   return (
     <div ref={containerRef} style={{ width: "100%", height, flexShrink: 0 }}>
       <Stage width={stageWidth} height={height}>
         <Layer>
           <Rect x={0} y={0} width={stageWidth} height={height} fill="#1a1a2e" />
+          {xTicks.map((t, i) => (
+            <Text
+              key={`tick-${i}`}
+              x={secToX(t)}
+              y={height - MARGIN.bottom + 4}
+              text={`${t.toFixed(1)}s`}
+              fontSize={11}
+              fill={theme.colors.dark[2]}
+              align="center"
+            />
+          ))}
+          <Line
+            points={[
+              MARGIN.left,
+              height - MARGIN.bottom,
+              MARGIN.left + chartWidth,
+              height - MARGIN.bottom,
+            ]}
+            stroke={theme.colors.dark[4]}
+            strokeWidth={1}
+          />
         </Layer>
         <Layer>
           {lines.map((l, i) => (
-            <Line key={i} points={l.points} stroke={l.color} strokeWidth={1.5} tension={0} />
+            <Line
+              key={i}
+              points={l.points}
+              stroke={l.color}
+              strokeWidth={1.5}
+              tension={0}
+            />
           ))}
         </Layer>
         <Layer>
           {lines.map((l, i) => (
-            <Text key={i} x={4} y={4 + i * 14} text={l.label} fontSize={10} fill={l.color} />
+            <Text
+              key={i}
+              x={MARGIN.left - 4}
+              y={4 + i * 14}
+              text={l.label}
+              fontSize={10}
+              fill={l.color}
+              align="right"
+              fontFamily="monospace"
+            />
           ))}
         </Layer>
         <Layer>
           <Line
-            points={[cursorX, 0, cursorX, height]}
-            stroke="white"
-            strokeWidth={1}
-            dash={[4, 4]}
+            points={[curX, 0, curX, height]}
+            stroke={theme.white}
+            strokeWidth={1.5}
+            dash={[3, 3]}
+            listening={false}
           />
         </Layer>
       </Stage>

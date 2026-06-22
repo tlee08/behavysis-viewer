@@ -12,7 +12,7 @@ interface Props {
 
 const ROW_HEIGHT = 24;
 const HANDLE_W = 8;
-const MARGIN = { top: 4, right: 8, bottom: 24, left: 72 };
+const MARGIN = { top: 4, right: 30, bottom: 24, left: 30 };
 
 export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
   const containerRef = useRef<HTMLDivElement>(null);
