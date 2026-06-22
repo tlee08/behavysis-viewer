@@ -1,8 +1,8 @@
 import pl from "nodejs-polars";
-import { parseTuple2 } from "./columnNames";
-import { getRow0Frame } from "./parquetUtils";
 import type { ActualValue, Bout } from "../../shared/types";
 import { UNSURE } from "../../shared/types";
+import { parseTuple2 } from "./columnNames";
+import { getRow0Frame } from "./parquetUtils";
 
 function clampActual(v: number): ActualValue {
   if (v >= 1) return 1;
@@ -12,7 +12,11 @@ function clampActual(v: number): ActualValue {
 }
 
 /** Resolve a column name — tries new `behav__subcol` first, old `('behav', 'subcol')` second. */
-function findColumn(df: pl.DataFrame, behav: string, subcol: string): string | null {
+function findColumn(
+  df: pl.DataFrame,
+  behav: string,
+  subcol: string,
+): string | null {
   const newName = `${behav}__${subcol}`;
   if (df.columns.includes(newName)) return newName;
   const oldName = `('${behav}', '${subcol}')`;
@@ -25,19 +29,18 @@ function findColumn(df: pl.DataFrame, behav: string, subcol: string): string | n
  * Uses pred column to disambiguate old actual=0 (TRUE_NEG vs FALSE_POS) and
  * old actual=-1 (UNSURE → mapped to -2).
  */
-function migrateActual(
-  preds: Int8Array,
-  oldActuals: Int8Array,
-): Int8Array {
+function migrateActual(preds: Int8Array, oldActuals: Int8Array): Int8Array {
   const result = new Int8Array(preds.length);
   for (let i = 0; i < preds.length; i++) {
     if (preds[i] === 0) {
       result[i] = 0; // TRUE_NEG — model says no bout
     } else {
       const a = oldActuals[i];
-      if (a >= 1) result[i] = 1;       // TRUE_POS
-      else if (a === 0) result[i] = -1; // FALSE_POS (old NOT behaviour → model bout rejected)
-      else result[i] = -2;              // UNSURE (old not-sure value, typically -1)
+      if (a >= 1)
+        result[i] = 1; // TRUE_POS
+      else if (a === 0)
+        result[i] = -1; // FALSE_POS (old NOT behaviour → model bout rejected)
+      else result[i] = -2; // UNSURE (old not-sure value, typically -1)
     }
   }
   return result;
@@ -74,7 +77,7 @@ function framesToBouts(
 
   let runStart = -1;
   for (let i = 0; i < numFrames; i++) {
-    const isBout = actuals[i] !== 0;   // TRUE_POS=1, FALSE_POS=-1, UNSURE=-2
+    const isBout = actuals[i] !== 0; // TRUE_POS=1, FALSE_POS=-1, UNSURE=-2
     if (isBout && runStart === -1) {
       runStart = i;
     } else if (!isBout && runStart !== -1) {
@@ -100,9 +103,10 @@ function framesToBouts(
  * actual values to the new -2/-1/0/1 scheme.  After migration, the pred
  * column is ignored.
  */
-export function parseBehavParquet(
-  path: string,
-): { bouts: Bout[]; numFrames: number } {
+export function parseBehavParquet(path: string): {
+  bouts: Bout[];
+  numFrames: number;
+} {
   const df = pl.readParquet(path);
   const numRows = df.height;
   const row0Frame = getRow0Frame(df);
@@ -128,9 +132,8 @@ export function parseBehavParquet(
 
     if (hasActual && hasPred) {
       // Old format: migrate actual values using pred for disambiguation
-      const preds = Int8Array.from(
-        df.getColumn(predName).toArray(),
-        (v) => Number(v),
+      const preds = Int8Array.from(df.getColumn(predName).toArray(), (v) =>
+        Number(v),
       );
       const oldActuals = Int8Array.from(
         df.getColumn(actualName!).toArray(),
@@ -139,9 +142,8 @@ export function parseBehavParquet(
       actuals = migrateActual(preds, oldActuals);
     } else if (hasPred && !hasActual) {
       // Old format: only pred, no actual — derive actual from pred
-      const preds = Int8Array.from(
-        df.getColumn(predName).toArray(),
-        (v) => Number(v),
+      const preds = Int8Array.from(df.getColumn(predName).toArray(), (v) =>
+        Number(v),
       );
       actuals = new Int8Array(numRows);
       for (let i = 0; i < numRows; i++) {
@@ -149,9 +151,8 @@ export function parseBehavParquet(
       }
     } else {
       // New format: actual column exists, no pred
-      actuals = Int8Array.from(
-        df.getColumn(actualName!).toArray(),
-        (v) => Number(v),
+      actuals = Int8Array.from(df.getColumn(actualName!).toArray(), (v) =>
+        Number(v),
       );
     }
 
@@ -175,9 +176,7 @@ export function parseBehavParquet(
     allBouts.push(...framesToBouts(actuals, behav, userDefCols, row0Frame));
   }
 
-  allBouts.sort(
-    (a, b) => a.start - b.start || a.behav.localeCompare(b.behav),
-  );
+  allBouts.sort((a, b) => a.start - b.start || a.behav.localeCompare(b.behav));
   allBouts.forEach((b, i) => {
     b.id = i;
   });
