@@ -2,7 +2,6 @@ import { Box, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useRef } from "react";
 import { ACTUAL_COLORS } from "../../../shared/types";
-import { useFps } from "../hooks/useFps";
 import { frameToTimecode, frameDurationSec } from "../lib/timecode";
 import { useStore, getBoutById } from "../store";
 
@@ -16,7 +15,7 @@ export function BoutsPanel(): React.ReactElement {
     setCurrentFrame,
     focusSizeFrames,
   } = useStore();
-  const fps = useFps();
+  const fps = useStore((s) => s.config?.fps ?? 15);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({

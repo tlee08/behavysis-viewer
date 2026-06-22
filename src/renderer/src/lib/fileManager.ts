@@ -1,5 +1,14 @@
 import type { ExperimentPaths } from "../../shared/types";
 
+// Manual path helpers — needed because this module runs in the renderer
+// process where Node's `path` module is not available.
+// The convention mirrors the Behavysis pipeline output structure:
+//   {root}/
+//     0_config/{name}.json          ← user selects this
+//     2_formatted_vid/{name}.mp4    ← resolved sibling
+//     4_preprocessed/{name}.parquet ← resolved sibling
+//     7_scored_behavs/{name}.parquet ← resolved sibling
+
 function sep(p: string) {
   return p.includes("\\") ? "\\" : "/";
 }
@@ -24,6 +33,11 @@ function stripExt(name: string) {
   return name.includes(".") ? name.slice(0, name.lastIndexOf(".")) : name;
 }
 
+/**
+ * Derive experiment file paths from a config JSON path.
+ * Assumes config lives one directory below the experiment root
+ * (e.g. `root/0_config/NAME.json` → root is `dirname(dirname(configPath))`).
+ */
 export function resolveExperimentPaths(configPath: string): ExperimentPaths {
   const name = stripExt(basenameFn(configPath));
   const root = dirnameFn(dirnameFn(configPath));

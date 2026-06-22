@@ -48,9 +48,6 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
     [showKeypoints, keypointFrames, keypointDefs, config],
   );
 
-  const drawKeypointsRef = useRef(drawKeypoints);
-  drawKeypointsRef.current = drawKeypoints;
-
   const scheduleRvc = useCallback(() => {
     const video = videoRef.current;
     if (!video) return;
@@ -58,24 +55,24 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
       if (!useStore.getState().isPlaying) return;
       const frame = Math.floor(meta.mediaTime * fps);
       setCurrentFrame(frame);
-      drawKeypointsRef.current(frame);
-      if (!video.paused) scheduleRvc();
+      callbacksRef.current.drawKeypoints(frame);
+      if (!video.paused) callbacksRef.current.scheduleRvc();
     });
   }, [fps, setCurrentFrame]);
 
-  const scheduleRvcRef = useRef(scheduleRvc);
-  scheduleRvcRef.current = scheduleRvc;
+  const callbacksRef = useRef({ drawKeypoints, scheduleRvc });
+  callbacksRef.current = { drawKeypoints, scheduleRvc };
 
   useEffect(() => {
     const video = videoRef.current;
     if (!video) return;
     if (isPlaying) {
-      video.play().then(() => scheduleRvc());
+      video.play().then(() => callbacksRef.current.scheduleRvc());
     } else {
       video.pause();
       video.cancelVideoFrameCallback(rvcHandle.current);
     }
-  }, [isPlaying, scheduleRvc]);
+  }, [isPlaying]);
 
   useEffect(() => {
     if (videoRef.current) videoRef.current.playbackRate = vidSpeed;
@@ -90,9 +87,9 @@ export function VideoPane({ videoUrl }: Props): React.ReactElement {
     video.currentTime = targetTime;
     if (isPlaying) {
       video.cancelVideoFrameCallback(rvcHandle.current);
-      scheduleRvcRef.current();
+      callbacksRef.current.scheduleRvc();
     } else {
-      drawKeypointsRef.current(currentFrame);
+      callbacksRef.current.drawKeypoints(currentFrame);
     }
   }, [currentFrame, fps, isPlaying]);
 

@@ -1,3 +1,4 @@
+import { renameSync, unlinkSync } from "fs";
 import pl from "nodejs-polars";
 import type { Bout } from "../../shared/types";
 import { parseTuple2 } from "./columnNames";
@@ -24,7 +25,8 @@ function readColumn(
 }
 
 /**
- * Save edited bouts back to the original parquet file (overwrites in-place).
+ * Save edited bouts back to the original parquet file (atomic: write to .tmp
+ * first, verify, then rename over the original).
  *
  * Bout existence is stored in the 'actual' column using the new
  * `behav__actual` naming convention.  The 'pred' column is dropped entirely.
@@ -38,7 +40,6 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
   const numRows = df.height;
   const row0Frame = getRow0Frame(df);
 
-  // Track column updates keyed by new-format name (behav__subcol)
   const columnUpdates = new Map<string, Int8Array>();
 
   for (const bout of bouts) {
@@ -46,7 +47,6 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
     const stopRow = bout.stop - row0Frame;
     const effectiveStop = Math.min(stopRow, numRows - 1);
 
-    // Actual column — start from all zeros (TRUE_NEG), fill bout range
     const actualCol = `${bout.behav}__actual`;
     if (!columnUpdates.has(actualCol)) {
       columnUpdates.set(actualCol, new Int8Array(numRows));
@@ -56,7 +56,6 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
       actualVec[f] = bout.actual;
     }
 
-    // User-defined columns
     for (const [udKey, udValue] of Object.entries(bout.userDefined)) {
       const udCol = `${bout.behav}__${udKey}`;
       if (!columnUpdates.has(udCol)) {
@@ -72,7 +71,6 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
     }
   }
 
-  // Drop all pred columns (both old and new formats)
   let result = df;
   for (const name of df.columns) {
     const parsed = parseTuple2(name);
@@ -81,13 +79,11 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
     }
   }
 
-  // Replace old/new column variants with new-format columns
   for (const [newName, newValues] of columnUpdates) {
     const parsed = parseTuple2(newName)!;
     const behav = parsed[0];
     const subcol = parsed[1];
 
-    // Drop both old and new format variants if they exist
     const oldName = `('${behav}', '${subcol}')`;
     for (const name of [oldName, newName]) {
       if (result.columns.includes(name)) {
@@ -100,5 +96,27 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
     ]);
   }
 
-  result.writeParquet(path);
+  const tmpPath = path + ".tmp";
+  result.writeParquet(tmpPath);
+
+  // verify the temp file is readable before replacing the original
+  try {
+    const verifyDf = pl.readParquet(tmpPath);
+    if (verifyDf.height !== result.height) {
+      throw new Error(
+        `Write verification failed: expected ${result.height} rows, got ${verifyDf.height}`,
+      );
+    }
+  } catch (verifyErr) {
+    try {
+      unlinkSync(tmpPath);
+    } catch {
+      /* best-effort cleanup */
+    }
+    throw new Error(
+      `Save verification failed, original file untouched: ${String(verifyErr)}`,
+    );
+  }
+
+  renameSync(tmpPath, path);
 }

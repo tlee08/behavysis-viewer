@@ -2,13 +2,12 @@ import { Group, Box, Text } from "@mantine/core";
 import { PlaybackControls } from "./PlaybackControls";
 import { TimelineSlider } from "./TimelineSlider";
 import { PlaybackSettingsPopover } from "./PlaybackSettingsPopover";
-import { useFps } from "../../hooks/useFps";
 import { frameToTimecode } from "../../lib/timecode";
 import { useStore } from "../../store";
 
 export function PlaybackBar() {
   const { currentFrame } = useStore();
-  const fps = useFps();
+  const fps = useStore((s) => s.config?.fps ?? 15);
   const timeStr = frameToTimecode(currentFrame, fps);
 
   return (

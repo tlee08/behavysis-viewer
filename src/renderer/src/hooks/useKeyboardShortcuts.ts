@@ -16,7 +16,6 @@ export function useKeyboardShortcuts(): void {
         selectedBoutId,
         config,
         showKeypoints,
-        focusBout,
         focusSizeFrames,
         jumpSeconds,
       } = state;
@@ -45,10 +44,6 @@ export function useKeyboardShortcuts(): void {
         case "k":
         case "K":
           state.setShowKeypoints(!showKeypoints);
-          break;
-        case "f":
-        case "F":
-          state.setFocusBout(!focusBout);
           break;
         case "r":
         case "R": {

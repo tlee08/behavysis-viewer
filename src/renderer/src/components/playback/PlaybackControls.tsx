@@ -5,7 +5,6 @@ import {
   IconPlayerSkipBackFilled,
   IconPlayerSkipForwardFilled,
 } from "@tabler/icons-react";
-import { useFps } from "../../hooks/useFps";
 import { useStore } from "../../store";
 
 const jumpFrames = (fps: number, sec: number) => Math.round(sec * fps);
@@ -19,7 +18,7 @@ export function PlaybackControls() {
     setIsPlaying,
     setCurrentFrame,
   } = useStore();
-  const fps = useFps();
+  const fps = useStore((s) => s.config?.fps ?? 15);
 
   return (
     <Group gap={4}>

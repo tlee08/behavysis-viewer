@@ -1,5 +1,4 @@
 import { Box } from "@mantine/core";
-import { useEffect } from "react";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { BoutInspector } from "./components/BoutInspector";
 import { BoutsPanel } from "./components/BoutsPanel";
@@ -9,28 +8,10 @@ import { PlaybackBar } from "./components/playback/PlaybackBar";
 import { VideoPane } from "./components/VideoPane";
 import { useExperimentIO } from "./hooks/useExperimentIO";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
-import { useStore, getBoutById } from "./store";
 
 export default function App(): React.ReactElement {
   const { videoUrl, status, open, save } = useExperimentIO();
   useKeyboardShortcuts();
-
-  const {
-    currentFrame,
-    focusBout,
-    selectedBoutId,
-    focusSizeFrames,
-    setIsPlaying,
-  } = useStore();
-
-  useEffect(() => {
-    if (!focusBout || selectedBoutId === null) return;
-    const bout = getBoutById(selectedBoutId);
-    if (!bout) return;
-    if (currentFrame > bout.stop + focusSizeFrames) {
-      setIsPlaying(false);
-    }
-  }, [currentFrame, focusBout, selectedBoutId, focusSizeFrames, setIsPlaying]);
 
   return (
     <Box

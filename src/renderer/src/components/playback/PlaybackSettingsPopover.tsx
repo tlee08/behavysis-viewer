@@ -55,8 +55,6 @@ export function PlaybackSettingsPopover() {
     setGraphWindowSeconds,
     showKeypoints,
     setShowKeypoints,
-    focusBout,
-    setFocusBout,
     config,
     setKeypointPcutoff,
     setKeypointRadius,
@@ -151,12 +149,6 @@ export function PlaybackSettingsPopover() {
               {radius.toFixed(0)}px
             </Text>
           </Group>
-          <Switch
-            label="Focus"
-            checked={focusBout}
-            onChange={(e) => setFocusBout(e.currentTarget.checked)}
-            size="xs"
-          />
         </Stack>
       </Popover.Dropdown>
     </Popover>

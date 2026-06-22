@@ -22,7 +22,6 @@ interface AppState {
   focusSizeFrames: number;
 
   showKeypoints: boolean;
-  focusBout: boolean;
   jumpSeconds: number;
   graphWindowSeconds: number;
 
@@ -42,7 +41,6 @@ interface AppState {
   setVidSpeed: (speed: number) => void;
   setFocusSizeFrames: (n: number) => void;
   setShowKeypoints: (show: boolean) => void;
-  setFocusBout: (focus: boolean) => void;
   setKeypointPcutoff: (pcutoff: number) => void;
   setKeypointRadius: (radius: number) => void;
   setJumpSeconds: (seconds: number) => void;
@@ -62,7 +60,7 @@ interface AppState {
   updateBoutRange: (id: number, start: number, stop: number) => void;
 }
 
-export const useStore = create<AppState>((set) => ({
+export const useStore = create<AppState>((set, get) => ({
   paths: null,
   config: null,
   numFrames: 0,
@@ -76,7 +74,6 @@ export const useStore = create<AppState>((set) => ({
   focusSizeFrames: 5,
 
   showKeypoints: false,
-  focusBout: false,
   jumpSeconds: 5,
   graphWindowSeconds: 10,
 
@@ -107,7 +104,6 @@ export const useStore = create<AppState>((set) => ({
   setVidSpeed: (vidSpeed) => set({ vidSpeed }),
   setFocusSizeFrames: (focusSizeFrames) => set({ focusSizeFrames }),
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
-  setFocusBout: (focusBout) => set({ focusBout }),
   setKeypointPcutoff: (keypointPcutoff) =>
     set((s) => ({
       config: s.config ? { ...s.config, keypointPcutoff } : null,
@@ -119,7 +115,19 @@ export const useStore = create<AppState>((set) => ({
   setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
 
-  selectBout: (selectedBoutId) => set({ selectedBoutId, interimBoutEdit: null }),
+  selectBout: (selectedBoutId) => {
+    if (selectedBoutId === null) {
+      set({ selectedBoutId: null, interimBoutEdit: null });
+      return;
+    }
+    const bout = get().bouts.find((b) => b.id === selectedBoutId);
+    set({
+      selectedBoutId,
+      interimBoutEdit: bout
+        ? { boutId: bout.id, start: bout.start, stop: bout.stop }
+        : null,
+    });
+  },
 
   interimBoutEdit: null,
   setInterimBoutEdit: (interimBoutEdit) => set({ interimBoutEdit }),

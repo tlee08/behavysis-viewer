@@ -3,7 +3,6 @@ import type Konva from "konva";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Layer, Line, Rect, Stage, Text } from "react-konva";
 import { ACTUAL_COLORS } from "../../../shared/types";
-import { useFps } from "../hooks/useFps";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useStore } from "../store";
 
@@ -29,7 +28,7 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
     setInterimBoutEdit,
     numFrames,
   } = useStore();
-  const fps = useFps();
+  const fps = useStore((s) => s.config?.fps ?? 15);
   const visibleRange = useVisibleRange();
   const xMin = visibleRange[0] / fps;
   const xMax = visibleRange[1] / fps;

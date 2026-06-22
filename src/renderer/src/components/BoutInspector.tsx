@@ -9,7 +9,6 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import { useEffect, useState } from "react";
 import type { ActualValue } from "../../../shared/types";
 import { ACTUAL_COLORS } from "../../../shared/types";
 import { frameToTimecodeMs, timecodeToFrame } from "../lib/timecode";
@@ -32,42 +31,9 @@ export function BoutInspector(): React.ReactElement {
     updateBoutUserDefined,
     updateBoutRange,
   } = useStore();
+
   const bout =
     selectedBoutId !== null ? getBoutById(selectedBoutId) : undefined;
-
-  const [editStart, setEditStart] = useState<number>(0);
-  const [editStop, setEditStop] = useState<number>(0);
-  const [startTc, setStartTc] = useState("0:00.000");
-  const [stopTc, setStopTc] = useState("0:00.000");
-
-  useEffect(() => {
-    if (bout) {
-      const fps = config?.fps ?? 15;
-      setEditStart(bout.start);
-      setEditStop(bout.stop);
-      setStartTc(frameToTimecodeMs(bout.start, fps));
-      setStopTc(frameToTimecodeMs(bout.stop, fps));
-      setInterimBoutEdit({
-        boutId: bout.id,
-        start: bout.start,
-        stop: bout.stop,
-      });
-    }
-  }, [bout?.id]);
-
-  // pull timeline drag edits ← interim store
-  useEffect(() => {
-    if (!bout || !interimBoutEdit || interimBoutEdit.boutId !== bout.id) return;
-    const fps = config?.fps ?? 15;
-    if (interimBoutEdit.start !== editStart) {
-      setEditStart(interimBoutEdit.start);
-      setStartTc(frameToTimecodeMs(interimBoutEdit.start, fps));
-    }
-    if (interimBoutEdit.stop !== editStop) {
-      setEditStop(interimBoutEdit.stop);
-      setStopTc(frameToTimecodeMs(interimBoutEdit.stop, fps));
-    }
-  }, [interimBoutEdit]);
 
   if (!bout) {
     return (
@@ -78,36 +44,30 @@ export function BoutInspector(): React.ReactElement {
   }
 
   const fps = config?.fps ?? 15;
+  const isEditing =
+    interimBoutEdit !== null && interimBoutEdit.boutId === bout.id;
+  const editStart = isEditing ? interimBoutEdit.start : bout.start;
+  const editStop = isEditing ? interimBoutEdit.stop : bout.stop;
   const rangeValid = editStart <= editStop;
 
   const handleFrameStart = (v: string | number) => {
-    const f = Number(v);
-    setEditStart(f);
-    setStartTc(frameToTimecodeMs(f, fps));
-    setInterimBoutEdit({ boutId: bout.id, start: f, stop: editStop });
+    setInterimBoutEdit({ boutId: bout.id, start: Number(v), stop: editStop });
   };
 
   const handleFrameStop = (v: string | number) => {
-    const f = Number(v);
-    setEditStop(f);
-    setStopTc(frameToTimecodeMs(f, fps));
-    setInterimBoutEdit({ boutId: bout.id, start: editStart, stop: f });
+    setInterimBoutEdit({ boutId: bout.id, start: editStart, stop: Number(v) });
   };
 
   const handleTcStart = (v: string) => {
-    setStartTc(v);
     const f = timecodeToFrame(v, fps);
     if (!isNaN(f)) {
-      setEditStart(f);
       setInterimBoutEdit({ boutId: bout.id, start: f, stop: editStop });
     }
   };
 
   const handleTcStop = (v: string) => {
-    setStopTc(v);
     const f = timecodeToFrame(v, fps);
     if (!isNaN(f)) {
-      setEditStop(f);
       setInterimBoutEdit({ boutId: bout.id, start: editStart, stop: f });
     }
   };
@@ -120,11 +80,11 @@ export function BoutInspector(): React.ReactElement {
   };
 
   const handleReset = () => {
-    setEditStart(bout.start);
-    setEditStop(bout.stop);
-    setStartTc(frameToTimecodeMs(bout.start, fps));
-    setStopTc(frameToTimecodeMs(bout.stop, fps));
-    setInterimBoutEdit(null);
+    setInterimBoutEdit({
+      boutId: bout.id,
+      start: bout.start,
+      stop: bout.stop,
+    });
   };
 
   return (
@@ -209,7 +169,7 @@ export function BoutInspector(): React.ReactElement {
           />
           <TextInput
             placeholder="M:SS.mmm"
-            value={startTc}
+            value={frameToTimecodeMs(editStart, fps)}
             onChange={(e) => handleTcStart(e.currentTarget.value)}
             size="xs"
             style={{ flex: 1 }}
@@ -234,7 +194,7 @@ export function BoutInspector(): React.ReactElement {
           />
           <TextInput
             placeholder="M:SS.mmm"
-            value={stopTc}
+            value={frameToTimecodeMs(editStop, fps)}
             onChange={(e) => handleTcStop(e.currentTarget.value)}
             size="xs"
             style={{ flex: 1 }}
