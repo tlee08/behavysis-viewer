@@ -13,10 +13,10 @@ export const TRUE_NEG = 0 satisfies ActualValue;
 export const UNSURE = -2 satisfies ActualValue;
 
 export const ACTUAL_COLORS: Record<ActualValue, string> = {
-  [TRUE_POS]: "#22c55e",   // green  — IS behaviour
-  [FALSE_POS]: "#ef4444",  // red    — NOT behaviour
-  [TRUE_NEG]: "#6b7280",   // gray   — not a bout
-  [UNSURE]: "#eab308",     // yellow — unreviewed
+  [TRUE_POS]: "#22c55e", // green  — IS behaviour
+  [FALSE_POS]: "#ef4444", // red    — NOT behaviour
+  [TRUE_NEG]: "#6b7280", // gray   — not a bout
+  [UNSURE]: "#eab308", // yellow — unreviewed
 };
 
 export interface Bout {

@@ -12,7 +12,7 @@ export interface FrameMetadata {
 }
 
 type Waiter = {
-  resolve: (f: VideoFrame) => void;
+  resolve: (b: ImageBitmap) => void;
   reject: (e: Error) => void;
 };
 
@@ -20,8 +20,9 @@ export class FrameReader {
   private decoder: VideoDecoder | null = null;
   private samples: MP4Box.Sample[];
   private buf: ArrayBuffer;
-  private cache = new Map<number, VideoFrame>();
-  private readonly maxCache = 90;
+  private cache = new Map<number, ImageBitmap>();
+  private readonly maxCache: number;
+
   public readonly metadata: FrameMetadata;
 
   private active: {
@@ -35,6 +36,8 @@ export class FrameReader {
     this.metadata = m;
     this.samples = s;
     this.buf = b;
+    const px = m.codedWidth * m.codedHeight * 4;
+    this.maxCache = Math.min(500, Math.floor((200 * 1024 * 1024) / (px || 1)));
   }
 
   static async init(buffer: ArrayBuffer): Promise<FrameReader> {
@@ -76,7 +79,7 @@ export class FrameReader {
     return new FrameReader(m, s, buffer);
   }
 
-  async getFrame(i: number): Promise<VideoFrame> {
+  async getFrame(i: number): Promise<ImageBitmap> {
     if (i < 0 || i >= this.metadata.totalFrames) {
       throw new Error(
         `Frame ${i} out of range 0–${this.metadata.totalFrames - 1}`,
@@ -84,11 +87,7 @@ export class FrameReader {
     }
 
     const cached = this.cache.get(i);
-    if (cached) {
-      this.cache.delete(i);
-      this.cache.set(i, cached);
-      return cached;
-    }
+    if (cached) return cached;
 
     if (this.active) {
       if (i >= this.active.start && i <= this.active.end) {
@@ -96,22 +95,35 @@ export class FrameReader {
           this.active!.waiters.set(i, { resolve, reject });
         });
       }
-      this.abort();
+      const oldWaiters = this.active.waiters;
+      this.active = null;
+      for (const w of oldWaiters.values()) w.reject(new Error("Seeked"));
+      if (this.decoder?.state === "configured") {
+        await this.decoder.flush().catch(() => {});
+      }
     }
 
     const kf = this.findKeyframe(i);
     const end = Math.min(i + this.maxCache, this.metadata.totalFrames - 1);
 
-    return new Promise<VideoFrame>((resolve, reject) => {
-      this.active = {
-        start: kf,
-        end,
-        count: 0,
-        waiters: new Map([[i, { resolve, reject }]]),
-      };
+    this.active = {
+      start: kf,
+      end,
+      count: 0,
+      waiters: new Map(),
+    };
+
+    return new Promise<ImageBitmap>((resolve, reject) => {
+      this.active!.waiters.set(i, { resolve, reject });
       this.ensureDecoder();
       this.feed(kf, end);
-      this.decoder!.flush().catch(() => {});
+      this.decoder!.flush().catch((err) => {
+        const w = this.active?.waiters.get(i);
+        if (w) {
+          w.reject(new Error("Flush failed"));
+          this.active?.waiters.delete(i);
+        }
+      });
     });
   }
 
@@ -158,7 +170,9 @@ export class FrameReader {
       });
       try {
         this.decoder!.decode(chunk);
-      } catch {}
+      } catch (err) {
+        console.error("FrameReader: decode error at sample", i, err);
+      }
     }
   }
 
@@ -175,19 +189,46 @@ export class FrameReader {
     const alreadyCached = this.cache.has(idx);
 
     if (inWindow && !alreadyCached) {
-      this.addToCache(idx, frame);
-    }
-
-    if (w) {
-      const cached = this.cache.get(idx);
-      if (cached !== frame) frame.close();
-      w.resolve(cached ?? frame);
-      a.waiters.delete(idx);
-    } else if (!inWindow || alreadyCached) {
+      const canvas = new OffscreenCanvas(
+        frame.displayWidth,
+        frame.displayHeight,
+      );
+      canvas.getContext("2d")!.drawImage(frame, 0, 0);
       frame.close();
-    }
 
-    if (a.waiters.size === 0 && idx >= a.end) this.active = null;
+      createImageBitmap(canvas)
+        .then((bitmap) => {
+          if (this.active !== a) {
+            bitmap.close();
+            return;
+          }
+          this.addToCache(idx, bitmap);
+          if (w) {
+            w.resolve(bitmap);
+            a.waiters.delete(idx);
+          }
+          if (a.waiters.size === 0 && idx >= a.end) this.active = null;
+        })
+        .catch((err) => {
+          console.error("FrameReader: ImageBitmap failed at frame", idx, err);
+          if (this.active === a) {
+            if (w) {
+              w.reject(new Error("Bitmap conversion failed"));
+              a.waiters.delete(idx);
+            }
+            if (a.waiters.size === 0) this.active = null;
+          }
+        });
+    } else {
+      frame.close();
+      if (w) {
+        const cached = this.cache.get(idx);
+        if (cached) w.resolve(cached);
+        else w.reject(new Error(`Frame ${idx} unavailable`));
+        a.waiters.delete(idx);
+      }
+      if (a.waiters.size === 0 && idx >= a.end) this.active = null;
+    }
   }
 
   private abort(err?: Error): void {
@@ -212,7 +253,7 @@ export class FrameReader {
     return 0;
   }
 
-  private addToCache(i: number, frame: VideoFrame): void {
+  private addToCache(i: number, bitmap: ImageBitmap): void {
     if (this.cache.size >= this.maxCache) {
       const oldest = this.cache.keys().next().value;
       if (oldest !== undefined) {
@@ -220,7 +261,7 @@ export class FrameReader {
         this.cache.delete(oldest);
       }
     }
-    this.cache.set(i, frame);
+    this.cache.set(i, bitmap);
   }
 }
 

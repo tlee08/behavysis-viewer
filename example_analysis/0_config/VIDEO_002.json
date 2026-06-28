@@ -54,25 +54,12 @@
         "behav_name": "aggression",
         "pcutoff": -1.0,
         "min_empty_window_secs": 0.2,
-        "user_defined": [
-          "mouse1marked_attack",
-          "mouse2unmarked_attack"
-        ]
+        "user_defined": ["mouse1marked_attack", "mouse2unmarked_attack"]
       }
     ],
     "analyse": {
-      "bins_sec": [
-        30,
-        60,
-        120
-      ],
-      "custom_bins_sec": [
-        60,
-        120,
-        300,
-        600,
-        900
-      ],
+      "bins_sec": [30, 60, 120],
+      "custom_bins_sec": [60, 120, 300, 600, 900],
       "speed": {
         "smoothing_sec": 1.0,
         "bodyparts": "--bpts_centre"
@@ -98,10 +85,7 @@
       ]
     },
     "evaluate_vid": {
-      "funcs": [
-        "keypoints",
-        "analysis"
-      ],
+      "funcs": ["keypoints", "analysis"],
       "pcutoff": 0.8,
       "colour_level": "individuals",
       "radius": 3,
@@ -128,10 +112,7 @@
     "dur_frames": 13468
   },
   "ref": {
-    "indivs_simba": [
-      "mouse1marked",
-      "mouse2unmarked"
-    ],
+    "indivs_simba": ["mouse1marked", "mouse2unmarked"],
     "bpts_simba": [
       "LeftEar",
       "RightEar",
@@ -150,17 +131,7 @@
       "RightFlankRear",
       "TailBase1"
     ],
-    "bpts_front": [
-      "LeftEar",
-      "RightEar",
-      "Nose",
-      "BodyCentre"
-    ],
-    "bpts_corners": [
-      "TopLeft",
-      "TopRight",
-      "BottomRight",
-      "BottomLeft"
-    ]
+    "bpts_front": ["LeftEar", "RightEar", "Nose", "BodyCentre"],
+    "bpts_corners": ["TopLeft", "TopRight", "BottomRight", "BottomLeft"]
   }
 }

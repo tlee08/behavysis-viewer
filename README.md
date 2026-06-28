@@ -67,19 +67,24 @@ Renderer (Chromium + React 18 + Mantine 7)
 ## Data format
 
 ### Config JSON (`0_config/{name}.json`)
+
 Pipeline config with `auto.formatted_vid.*` (fps, dimensions, frame count) and `user.evaluate_vid.*` (pcutoff, radius).
 
 ### Behaviour parquet (`6_predicted_behavs/` or `7_scored_behavs/`)
+
 Uses 2-level column names:
+
 - New format (written by viewer): `behav__actual`, `behav__subbehav`
 - Old format (from pipeline): `('behav', 'actual')`, `('behav', 'pred')`
 
 Actual values: `1`=TRUE_POS, `-1`=FALSE_POS, `0`=TRUE_NEG, `-2`=UNSURE
 
 ### Keypoints parquet (`4_preprocessed/`)
+
 DLC 4-level tuple column names: `('DLC_scorer', 'mouse1', 'Nose', 'x')`
 
 ### Features parquet (`5_features_extracted/`)
+
 Flat per-frame feature columns (centroid distance, movement, angles, etc). Not yet displayed — coming in a future update.
 
 ## Project structure

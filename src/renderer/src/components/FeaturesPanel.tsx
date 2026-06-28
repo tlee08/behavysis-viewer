@@ -47,9 +47,7 @@ export function FeaturesPanel() {
           placeholder="Search columns…"
           data={featureColumns.map((c) => ({ value: c, label: c }))}
           value={selectedFeatureColumns}
-          onChange={(v) =>
-            setSelectedFeatureColumns(v.slice(0, 10))
-          }
+          onChange={(v) => setSelectedFeatureColumns(v.slice(0, 10))}
           searchable
           clearable
           size="xs"
