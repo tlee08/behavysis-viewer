@@ -1,0 +1,28 @@
+{
+  "$schema": "https://raw.githubusercontent.com/nicedoc/openapis/master/tauri/2.0/schema.json",
+  "productName": "Behavysis Viewer",
+  "version": "0.1.0",
+  "identifier": "com.bowenlab.behavysis-viewer",
+  "build": {
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173",
+    "beforeDevCommand": "pnpm dev:web",
+    "beforeBuildCommand": "pnpm build:web"
+  },
+  "app": {
+    "withGlobalTauri": true,
+    "windows": [
+      {
+        "title": "Behavysis Viewer",
+        "width": 1280,
+        "height": 800,
+        "resizable": true,
+        "fullscreen": false
+      }
+    ],
+    "security": {
+      "csp": null
+    }
+  },
+  "plugins": {}
+}

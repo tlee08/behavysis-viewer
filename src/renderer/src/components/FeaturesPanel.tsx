@@ -1,5 +1,7 @@
 import { Box, MultiSelect, Select, Stack, Switch, Text } from "@mantine/core";
 import { useEffect, useRef } from "react";
+import { readFile } from "@tauri-apps/plugin-fs";
+import { loadFeatureData } from "../lib/parquetIO";
 import { useStore } from "../store";
 
 export function FeaturesPanel() {
@@ -33,8 +35,8 @@ export function FeaturesPanel() {
       return;
     }
 
-    window.electron
-      .parseFeaturesData(paths.featuresPath, sel)
+    readFile(paths.featuresPath)
+      .then((bytes) => loadFeatureData(new Uint8Array(bytes), sel))
       .then((data) => setFeatureData(data))
       .catch(() => setFeatureData({}));
   }, [selectedFeatureColumns, paths, setFeatureData]);

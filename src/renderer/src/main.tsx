@@ -7,7 +7,7 @@ import { ErrorBoundary } from "./components/ErrorBoundary";
 
 ReactDOM.createRoot(document.getElementById("root")!).render(
   <StrictMode>
-    <MantineProvider theme={theme} defaultColorScheme="dark">
+    <MantineProvider theme={theme} forceColorScheme="dark">
       <ErrorBoundary>
         <App />
       </ErrorBoundary>

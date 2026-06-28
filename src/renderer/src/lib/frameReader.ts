@@ -41,8 +41,7 @@ export class FrameReader {
   }
 
   static async init(buffer: ArrayBuffer): Promise<FrameReader> {
-    const arrBuf = buffer as ArrayBuffer;
-    arrBuf.fileStart = 0;
+    (buffer as unknown as Record<string, number>).fileStart = 0;
 
     const mp4 = MP4Box.createFile();
     const ready = new Promise<{ m: FrameMetadata; s: MP4Box.Sample[] }>(
@@ -73,7 +72,7 @@ export class FrameReader {
       },
     );
 
-    mp4.appendBuffer(arrBuf);
+    mp4.appendBuffer(buffer as MP4Box.MP4BoxBuffer);
     mp4.flush();
     const { m, s } = await ready;
     return new FrameReader(m, s, buffer);

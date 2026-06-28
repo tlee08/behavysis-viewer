@@ -1,5 +1,4 @@
-// Types shared between main process (parsing via nodejs-polars)
-// and renderer process (Zustand store + UI components).
+// Shared types for parquet I/O (duckdb-wasm) and UI components.
 
 // 1=TRUE_POS (model bout, reviewer confirms IS behaviour)
 // -1=FALSE_POS (model bout, reviewer says NOT behaviour)

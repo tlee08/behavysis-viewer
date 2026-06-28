@@ -1,4 +1,3 @@
-/** Generate N visually distinct hex colours using HSL spacing. */
 export function generateColors(n: number): string[] {
   if (n === 0) return [];
   return Array.from({ length: n }, (_, i) => {
