@@ -42,28 +42,33 @@ export class FrameReader {
     arrBuf.fileStart = 0;
 
     const mp4 = MP4Box.createFile();
-    const ready = new Promise<{ m: FrameMetadata; s: MP4Box.Sample[] }>((resolve, reject) => {
-      mp4.onReady = (info) => {
-        const vt = info.videoTracks[0];
-        if (!vt) return reject(new Error("No video track"));
-        const samples = mp4.getTrackSamplesInfo(vt.id);
-        const kfs = samples.filter((s) => s.is_sync).map((s) => s.number);
-        resolve({
-          m: {
-            codec: vt.codec.replace(/\.(.+)$/, (_, h) => "." + h.toUpperCase()),
-            codedWidth: vt.video?.width ?? vt.track_width,
-            codedHeight: vt.video?.height ?? vt.track_height,
-            fps: vt.nb_samples / (vt.samples_duration / vt.timescale),
-            totalFrames: vt.nb_samples,
-            keyframeIndices: kfs,
-            timescale: vt.timescale,
-            description: buildAVCC(mp4),
-          },
-          s: samples,
-        });
-      };
-      mp4.onError = (_s, msg) => reject(new Error("mp4box: " + msg));
-    });
+    const ready = new Promise<{ m: FrameMetadata; s: MP4Box.Sample[] }>(
+      (resolve, reject) => {
+        mp4.onReady = (info) => {
+          const vt = info.videoTracks[0];
+          if (!vt) return reject(new Error("No video track"));
+          const samples = mp4.getTrackSamplesInfo(vt.id);
+          const kfs = samples.filter((s) => s.is_sync).map((s) => s.number);
+          resolve({
+            m: {
+              codec: vt.codec.replace(
+                /\.(.+)$/,
+                (_, h) => "." + h.toUpperCase(),
+              ),
+              codedWidth: vt.video?.width ?? vt.track_width,
+              codedHeight: vt.video?.height ?? vt.track_height,
+              fps: vt.nb_samples / (vt.samples_duration / vt.timescale),
+              totalFrames: vt.nb_samples,
+              keyframeIndices: kfs,
+              timescale: vt.timescale,
+              description: buildAVCC(mp4),
+            },
+            s: samples,
+          });
+        };
+        mp4.onError = (_s, msg) => reject(new Error("mp4box: " + msg));
+      },
+    );
 
     mp4.appendBuffer(arrBuf);
     mp4.flush();
@@ -73,7 +78,9 @@ export class FrameReader {
 
   async getFrame(i: number): Promise<VideoFrame> {
     if (i < 0 || i >= this.metadata.totalFrames) {
-      throw new Error(`Frame ${i} out of range 0–${this.metadata.totalFrames - 1}`);
+      throw new Error(
+        `Frame ${i} out of range 0–${this.metadata.totalFrames - 1}`,
+      );
     }
 
     const cached = this.cache.get(i);
@@ -96,7 +103,12 @@ export class FrameReader {
     const end = Math.min(i + this.maxCache, this.metadata.totalFrames - 1);
 
     return new Promise<VideoFrame>((resolve, reject) => {
-      this.active = { start: kf, end, count: 0, waiters: new Map([[i, { resolve, reject }]]) };
+      this.active = {
+        start: kf,
+        end,
+        count: 0,
+        waiters: new Map([[i, { resolve, reject }]]),
+      };
       this.ensureDecoder();
       this.feed(kf, end);
       this.decoder!.flush().catch(() => {});
@@ -107,7 +119,10 @@ export class FrameReader {
     this.active = null;
     for (const f of this.cache.values()) f.close();
     this.cache.clear();
-    if (this.decoder) try { this.decoder.close(); } catch {}
+    if (this.decoder)
+      try {
+        this.decoder.close();
+      } catch {}
     this.decoder = null;
   }
 
@@ -115,7 +130,10 @@ export class FrameReader {
 
   private ensureDecoder(): void {
     if (this.decoder?.state === "configured") return;
-    if (this.decoder) try { this.decoder.close(); } catch {}
+    if (this.decoder)
+      try {
+        this.decoder.close();
+      } catch {}
 
     const { codec, codedWidth, codedHeight, description } = this.metadata;
     this.decoder = new VideoDecoder({
@@ -138,13 +156,18 @@ export class FrameReader {
         duration: Math.round((s.duration / ts) * 1_000_000),
         data: new Uint8Array(this.buf, s.offset, s.size),
       });
-      try { this.decoder!.decode(chunk); } catch {}
+      try {
+        this.decoder!.decode(chunk);
+      } catch {}
     }
   }
 
   private onFrame(frame: VideoFrame): void {
     const a = this.active;
-    if (!a) { frame.close(); return; }
+    if (!a) {
+      frame.close();
+      return;
+    }
 
     const idx = a.start + a.count++;
     const w = a.waiters.get(idx);
@@ -174,7 +197,9 @@ export class FrameReader {
       for (const w of a.waiters.values()) w.reject(err ?? new Error("Aborted"));
     }
     if (this.decoder?.state === "configured") {
-      try { this.decoder.close(); } catch {}
+      try {
+        this.decoder.close();
+      } catch {}
       this.decoder = null;
     }
   }

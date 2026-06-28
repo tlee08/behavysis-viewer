@@ -1,4 +1,3 @@
-import { renameSync, unlinkSync } from "fs";
 import pl from "nodejs-polars";
 import type { Bout } from "../../shared/types";
 import { parseTuple2 } from "./columnNames";
@@ -96,27 +95,5 @@ export function saveBehavParquet(path: string, bouts: Bout[]): void {
     ]);
   }
 
-  const tmpPath = path + ".tmp";
-  result.writeParquet(tmpPath);
-
-  // verify the temp file is readable before replacing the original
-  try {
-    const verifyDf = pl.readParquet(tmpPath);
-    if (verifyDf.height !== result.height) {
-      throw new Error(
-        `Write verification failed: expected ${result.height} rows, got ${verifyDf.height}`,
-      );
-    }
-  } catch (verifyErr) {
-    try {
-      unlinkSync(tmpPath);
-    } catch {
-      /* best-effort cleanup */
-    }
-    throw new Error(
-      `Save verification failed, original file untouched: ${String(verifyErr)}`,
-    );
-  }
-
-  renameSync(tmpPath, path);
+  result.writeParquet(path);
 }

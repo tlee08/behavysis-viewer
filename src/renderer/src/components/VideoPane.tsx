@@ -1,7 +1,7 @@
 import { Box } from "@mantine/core";
 import { useCallback, useEffect, useRef } from "react";
+import type { FrameMetadata, FrameReader } from "../lib/frameReader";
 import { useStore } from "../store";
-import type { FrameReader, FrameMetadata } from "../lib/frameReader";
 
 interface Props {
   reader: FrameReader | null;
@@ -15,48 +15,64 @@ export function VideoPane({ reader, metadata }: Props) {
   const clock = useRef(0);
 
   const {
-    config, keypointDefs, keypointFrames, showVideo, showKeypoints,
-    isPlaying, vidSpeed, currentFrame,
-    setCurrentFrame, setIsPlaying,
+    config,
+    keypointDefs,
+    keypointFrames,
+    showVideo,
+    showKeypoints,
+    isPlaying,
+    vidSpeed,
+    currentFrame,
+    setCurrentFrame,
+    setIsPlaying,
   } = useStore();
 
   const fps = metadata?.fps ?? 15;
   const w = config?.widthPx ?? 640;
   const h = config?.heightPx ?? 480;
 
-  const drawFrame = useCallback((i: number) => {
-    const ctx = videoRef.current?.getContext("2d");
-    if (!ctx || !reader) return;
-    if (!showVideo) {
-      ctx.fillStyle = "#111";
-      ctx.fillRect(0, 0, w, h);
-      return;
-    }
-    reader.getFrame(i).then(f => {
+  const drawFrame = useCallback(
+    (i: number) => {
+      const ctx = videoRef.current?.getContext("2d");
+      if (!ctx || !reader) return;
+      if (!showVideo) {
+        ctx.fillStyle = "#111";
+        ctx.fillRect(0, 0, w, h);
+        return;
+      }
+      reader
+        .getFrame(i)
+        .then((f) => {
+          ctx.clearRect(0, 0, w, h);
+          ctx.drawImage(f, 0, 0, w, h);
+        })
+        .catch((err) => console.error("drawFrame", i, err));
+    },
+    [reader, showVideo, w, h],
+  );
+
+  const drawKpts = useCallback(
+    (i: number) => {
+      const ctx = kptRef.current?.getContext("2d");
+      if (!ctx) return;
       ctx.clearRect(0, 0, w, h);
-      ctx.drawImage(f, 0, 0, w, h);
-    }).catch(err => console.error("drawFrame", i, err));
-  }, [reader, showVideo, w, h]);
+      if (!showKeypoints || !keypointFrames[i]) return;
 
-  const drawKpts = useCallback((i: number) => {
-    const ctx = kptRef.current?.getContext("2d");
-    if (!ctx) return;
-    ctx.clearRect(0, 0, w, h);
-    if (!showKeypoints || !keypointFrames[i]) return;
+      const r = config?.keypointRadius ?? 5;
+      const sx = w / (config?.widthPx ?? w);
+      const sy = h / (config?.heightPx ?? h);
 
-    const r = config?.keypointRadius ?? 5;
-    const sx = w / (config?.widthPx ?? w);
-    const sy = h / (config?.heightPx ?? h);
-
-    for (const d of keypointDefs) {
-      const k = keypointFrames[i][d.key];
-      if (!k || k.likelihood < config!.keypointPcutoff) continue;
-      ctx.beginPath();
-      ctx.arc(k.x * sx, k.y * sy, r, 0, Math.PI * 2);
-      ctx.fillStyle = d.color;
-      ctx.fill();
-    }
-  }, [showKeypoints, keypointFrames, keypointDefs, config, w, h]);
+      for (const d of keypointDefs) {
+        const k = keypointFrames[i][d.key];
+        if (!k || k.likelihood < config!.keypointPcutoff) continue;
+        ctx.beginPath();
+        ctx.arc(k.x * sx, k.y * sy, r, 0, Math.PI * 2);
+        ctx.fillStyle = d.color;
+        ctx.fill();
+      }
+    },
+    [showKeypoints, keypointFrames, keypointDefs, config, w, h],
+  );
 
   useEffect(() => {
     if (!isPlaying || !reader || !metadata) return;
@@ -96,7 +112,22 @@ export function VideoPane({ reader, metadata }: Props) {
 
     raf.current = requestAnimationFrame(tick);
     return () => cancelAnimationFrame(raf.current);
-  }, [isPlaying, reader, metadata, fps, vidSpeed, showVideo, showKeypoints, keypointFrames, keypointDefs, config, drawFrame, drawKpts, setIsPlaying, setCurrentFrame]);
+  }, [
+    isPlaying,
+    reader,
+    metadata,
+    fps,
+    vidSpeed,
+    showVideo,
+    showKeypoints,
+    keypointFrames,
+    keypointDefs,
+    config,
+    drawFrame,
+    drawKpts,
+    setIsPlaying,
+    setCurrentFrame,
+  ]);
 
   useEffect(() => {
     if (!isPlaying && reader) {
@@ -106,13 +137,38 @@ export function VideoPane({ reader, metadata }: Props) {
   }, [currentFrame, isPlaying, reader, drawFrame, drawKpts]);
 
   if (!metadata) {
-    return <Box w="100%" style={{ aspectRatio: `${w} / ${h}`, background: "#111" }} />;
+    return (
+      <Box
+        w="100%"
+        style={{ aspectRatio: `${w} / ${h}`, background: "#111" }}
+      />
+    );
   }
 
   return (
-    <Box pos="relative" w="100%" style={{ aspectRatio: `${w} / ${h}`, background: "#111" }}>
-      <canvas ref={videoRef} width={w} height={h} style={{ width: "100%", height: "100%", display: "block" }} />
-      <canvas ref={kptRef} width={w} height={h} style={{ position: "absolute", inset: 0, width: "100%", height: "100%", pointerEvents: "none" }} />
+    <Box
+      pos="relative"
+      w="100%"
+      style={{ aspectRatio: `${w} / ${h}`, background: "#111" }}
+    >
+      <canvas
+        ref={videoRef}
+        width={w}
+        height={h}
+        style={{ width: "100%", height: "100%", display: "block" }}
+      />
+      <canvas
+        ref={kptRef}
+        width={w}
+        height={h}
+        style={{
+          position: "absolute",
+          inset: 0,
+          width: "100%",
+          height: "100%",
+          pointerEvents: "none",
+        }}
+      />
     </Box>
   );
 }
