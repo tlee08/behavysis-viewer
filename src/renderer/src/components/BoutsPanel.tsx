@@ -13,7 +13,7 @@ export function BoutsPanel(): React.ReactElement {
     selectedBoutId,
     selectBout,
     setCurrentFrame,
-    focusSizeFrames,
+    focusSizeSeconds,
   } = useStore();
   const fps = useStore((s) => s.videoMetadata?.fps ?? s.config?.fps ?? 15);
   const parentRef = useRef<HTMLDivElement>(null);
@@ -35,7 +35,7 @@ export function BoutsPanel(): React.ReactElement {
   const handleSelect = (id: number) => {
     selectBout(id);
     const bout = getBoutById(id);
-    if (bout) setCurrentFrame(Math.max(0, bout.start - focusSizeFrames));
+    if (bout) setCurrentFrame(Math.max(0, bout.start - Math.round(focusSizeSeconds * fps)));
   };
 
   return (

@@ -45,6 +45,17 @@ const WINDOW_OPTS = [
   { value: "60", label: "60s" },
 ];
 
+const FOCUS_OPTS = [
+  { value: "0.5", label: "0.5s" },
+  { value: "1", label: "1s" },
+  { value: "1.5", label: "1.5s" },
+  { value: "2", label: "2s" },
+  { value: "3", label: "3s" },
+  { value: "5", label: "5s" },
+  { value: "10", label: "10s" },
+  { value: "15", label: "15s" },
+];
+
 export function PlaybackSettingsPopover() {
   const {
     jumpSeconds,
@@ -57,6 +68,8 @@ export function PlaybackSettingsPopover() {
     setShowVideo,
     showKeypoints,
     setShowKeypoints,
+    focusSizeSeconds,
+    setFocusSizeSeconds,
     config,
     setKeypointPcutoff,
     setKeypointRadius,
@@ -81,6 +94,19 @@ export function PlaybackSettingsPopover() {
               data={SKIP_OPTS}
               value={jumpSeconds.toString()}
               onChange={(v) => v && setJumpSeconds(Number(v))}
+              size="xs"
+              w={62}
+              allowDeselect={false}
+            />
+          </Group>
+          <Group gap="xs" wrap="nowrap">
+            <Text size="xs" c="dimmed" w={44}>
+              Focus
+            </Text>
+            <Select
+              data={FOCUS_OPTS}
+              value={focusSizeSeconds.toString()}
+              onChange={(v) => v && setFocusSizeSeconds(Number(v))}
               size="xs"
               w={62}
               allowDeselect={false}

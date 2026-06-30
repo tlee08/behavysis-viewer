@@ -17,7 +17,7 @@ export function useKeyboardShortcuts(): void {
         config,
         videoMetadata,
         showKeypoints,
-        focusSizeFrames,
+        focusSizeSeconds,
         jumpSeconds,
       } = state;
       const fps = videoMetadata?.fps ?? config?.fps ?? 15;
@@ -51,7 +51,7 @@ export function useKeyboardShortcuts(): void {
           if (selectedBoutId === null) break;
           const bout = getBoutById(selectedBoutId);
           if (bout)
-            state.setCurrentFrame(Math.max(0, bout.start - focusSizeFrames));
+            state.setCurrentFrame(Math.max(0, bout.start - Math.round(focusSizeSeconds * fps)));
           break;
         }
         case "ArrowUp":
@@ -69,7 +69,7 @@ export function useKeyboardShortcuts(): void {
           const target = sorted[newIdx];
           if (target) {
             state.selectBout(target.id);
-            state.setCurrentFrame(Math.max(0, target.start - focusSizeFrames));
+            state.setCurrentFrame(Math.max(0, target.start - Math.round(focusSizeSeconds * fps)));
           }
           break;
         }

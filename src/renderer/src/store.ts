@@ -1,13 +1,13 @@
 import { create } from "zustand";
-import type { FrameMetadata } from "./lib/frameReader";
 import type {
-  Bout,
-  AppConfig,
-  ExperimentPaths,
-  KeypointFrame,
-  KeypointDef,
   ActualValue,
+  AppConfig,
+  Bout,
+  ExperimentPaths,
+  KeypointDef,
+  KeypointFrame,
 } from "../../shared/types";
+import type { FrameMetadata } from "./lib/frameReader";
 
 interface AppState {
   paths: ExperimentPaths | null;
@@ -21,7 +21,7 @@ interface AppState {
   currentFrame: number;
   isPlaying: boolean;
   vidSpeed: number;
-  focusSizeFrames: number;
+  focusSizeSeconds: number;
 
   showVideo: boolean;
   showKeypoints: boolean;
@@ -49,7 +49,7 @@ interface AppState {
   setIsPlaying: (playing: boolean) => void;
   setVidSpeed: (speed: number) => void;
   setVideoMetadata: (meta: FrameMetadata | null) => void;
-  setFocusSizeFrames: (n: number) => void;
+  setFocusSizeSeconds: (n: number) => void;
   setShowVideo: (show: boolean) => void;
   setShowKeypoints: (show: boolean) => void;
   setKeypointPcutoff: (pcutoff: number) => void;
@@ -89,7 +89,7 @@ export const useStore = create<AppState>((set, get) => ({
   currentFrame: 0,
   isPlaying: false,
   vidSpeed: 1,
-  focusSizeFrames: 5,
+  focusSizeSeconds: 1.5,
 
   showVideo: true,
   showKeypoints: false,
@@ -131,7 +131,7 @@ export const useStore = create<AppState>((set, get) => ({
   setIsPlaying: (isPlaying) => set({ isPlaying }),
   setVidSpeed: (vidSpeed) => set({ vidSpeed }),
   setVideoMetadata: (videoMetadata) => set({ videoMetadata }),
-  setFocusSizeFrames: (focusSizeFrames) => set({ focusSizeFrames }),
+  setFocusSizeSeconds: (focusSizeSeconds) => set({ focusSizeSeconds }),
   setShowVideo: (showVideo) => set({ showVideo }),
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
   setKeypointPcutoff: (keypointPcutoff) =>
