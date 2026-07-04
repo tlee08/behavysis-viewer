@@ -1,9 +1,14 @@
 import type * as arrow from "apache-arrow";
-import { getDuckDB } from "./duckdb";
-import type { Bout, KeypointDef, KeypointFrame } from "../../../shared/types";
+import type {
+  ActualValue,
+  Bout,
+  KeypointDef,
+  KeypointFrame,
+} from "../../../shared/types";
 import { UNSURE } from "../../../shared/types";
-import { parseTuple2, parseKptColumns } from "./columnNames";
 import { generateColors } from "./colors";
+import { parseKptColumns, parseTuple2 } from "./columnNames";
+import { getDuckDB } from "./duckdb";
 
 function clampActual(v: number): -2 | -1 | 0 | 1 {
   if (v >= 1) return 1;
@@ -23,56 +28,87 @@ function getRow0Frame(columns: string[], table: arrow.Table): number {
   return 0;
 }
 
-function migrateActual(preds: Int8Array, oldActuals: Int8Array): Int8Array {
-  const result = new Int8Array(preds.length);
-  for (let i = 0; i < preds.length; i++) {
-    if (preds[i] === 0) {
-      result[i] = 0;
-    } else {
-      const a = oldActuals[i];
-      if (a >= 1) result[i] = 1;
-      else if (a === 0) result[i] = -1;
-      else result[i] = -2;
+function readCol(t: arrow.Table, name: string): Int8Array {
+  return Int8Array.from(t.getChild(name)!.toArray() as number[]);
+}
+
+function findCol(
+  columns: string[],
+  behav: string,
+  type: string,
+): string | null {
+  const newName = `${behav}__${type}`;
+  if (columns.includes(newName)) return newName;
+  const oldName = `('${behav}', '${type}')`;
+  return columns.includes(oldName) ? oldName : null;
+}
+
+function buildBoutSignal(
+  t: arrow.Table,
+  predCol: string | null,
+  actualCol: string | null,
+  numRows: number,
+): Int8Array {
+  if (predCol && actualCol) {
+    const preds = readCol(t, predCol);
+    const oldActuals = readCol(t, actualCol);
+    const signal = new Int8Array(numRows);
+    for (let i = 0; i < numRows; i++) {
+      if (preds[i] === 0) {
+        signal[i] = 0;
+      } else {
+        const a = oldActuals[i];
+        if (a >= 1) signal[i] = 1;
+        else if (a === 0) signal[i] = -1;
+        else signal[i] = -2;
+      }
     }
+    return signal;
   }
-  return result;
+
+  if (predCol && !actualCol) {
+    const preds = readCol(t, predCol);
+    const signal = new Int8Array(numRows);
+    for (let i = 0; i < numRows; i++) signal[i] = preds[i] === 1 ? UNSURE : 0;
+    return signal;
+  }
+
+  return readCol(t, actualCol!);
 }
 
 function framesToBouts(
-  actuals: Int8Array,
+  signal: Int8Array,
   behav: string,
   userDefCols: Map<string, Int8Array>,
   offset: number,
 ): Bout[] {
   const bouts: Bout[] = [];
-  const numFrames = actuals.length;
+  const len = signal.length;
 
-  const pushBout = (startRow: number, stopRow: number) => {
-    const userDefined: Record<string, -2 | -1 | 0 | 1> = {};
+  const emit = (start: number, stop: number) => {
+    const userDefined: Record<string, ActualValue> = {};
     for (const [key, vec] of userDefCols) {
-      userDefined[key] = clampActual(vec[startRow]);
+      userDefined[key] = clampActual(vec[start]);
     }
     bouts.push({
       id: 0,
-      start: startRow + offset,
-      stop: stopRow + offset,
+      start: start + offset,
+      stop: stop + offset,
       behav,
-      actual: clampActual(actuals[startRow]),
+      actual: clampActual(signal[start]),
       userDefined,
     });
   };
 
-  let runStart = -1;
-  for (let i = 0; i < numFrames; i++) {
-    const isBout = actuals[i] !== 0;
-    if (isBout && runStart === -1) {
-      runStart = i;
-    } else if (!isBout && runStart !== -1) {
-      pushBout(runStart, i - 1);
-      runStart = -1;
+  let run = -1;
+  for (let i = 0; i <= len; i++) {
+    if (i < len && signal[i] !== 0) {
+      if (run === -1) run = i;
+    } else if (run !== -1) {
+      emit(run, i - 1);
+      run = -1;
     }
   }
-  if (runStart !== -1) pushBout(runStart, numFrames - 1);
 
   return bouts;
 }
@@ -86,84 +122,54 @@ export async function loadBehavParquet(
   try {
     const pathId = `behav_${Date.now()}.parquet`;
     await db.registerFileBuffer(pathId, buffer);
-    const result = await conn.query(
-      `SELECT * FROM read_parquet('${pathId}')`,
-    );
+    const t = await conn.query(`SELECT * FROM read_parquet('${pathId}')`);
 
-    const columns = result.schema.fields.map((f: arrow.Field) => f.name);
-    const numRows = result.numRows;
-    const row0Frame = getRow0Frame(columns, result);
+    const columns = t.schema.fields.map((f: arrow.Field) => f.name);
+    const offset = getRow0Frame(columns, t);
 
+    const behavUserDefs = new Map<string, Map<string, string>>();
     const behavNames = new Set<string>();
-    for (const name of columns) {
-      const parsed = parseTuple2(name);
-      if (parsed) behavNames.add(parsed[0]);
+
+    for (const col of columns) {
+      const parsed = parseTuple2(col);
+      if (parsed) {
+        const [behav, type] = parsed;
+        if (type === "pred") continue;
+        behavNames.add(behav);
+        if (type !== "actual") {
+          if (!behavUserDefs.has(behav)) behavUserDefs.set(behav, new Map());
+          behavUserDefs.get(behav)!.set(type, col);
+        }
+      }
     }
 
     const allBouts: Bout[] = [];
 
     for (const behav of behavNames) {
-      const predNew = columns.find((c: string) => c === `${behav}__pred`);
-      const actualNew = columns.find((c: string) => c === `${behav}__actual`);
-      const predOld = columns.find((c: string) => c === `('${behav}', 'pred')`);
-      const actualOld = columns.find((c: string) => c === `('${behav}', 'actual')`);
-      const predName = predNew ?? predOld ?? null;
-      const actualName = actualNew ?? actualOld ?? null;
-      const hasPred = predName !== null;
-      const hasActual = actualName !== null;
+      const predCol = findCol(columns, behav, "pred");
+      const actualCol = findCol(columns, behav, "actual");
 
-      if (!hasActual && !hasPred) continue;
+      if (!predCol && !actualCol) continue;
 
-      let actuals: Int8Array;
-
-      if (hasActual && hasPred) {
-        const preds = Int8Array.from(
-          result.getChild(predName)!.toArray() as number[],
-        );
-        const oldActuals = Int8Array.from(
-          result.getChild(actualName)!.toArray() as number[],
-        );
-        actuals = migrateActual(preds, oldActuals);
-      } else if (hasPred && !hasActual) {
-        const preds = Int8Array.from(
-          result.getChild(predName)!.toArray() as number[],
-        );
-        actuals = new Int8Array(numRows);
-        for (let i = 0; i < numRows; i++) {
-          actuals[i] = preds[i] === 1 ? UNSURE : 0;
-        }
-      } else {
-        actuals = Int8Array.from(
-          result.getChild(actualName!)!.toArray() as number[],
-        );
-      }
+      const signal = buildBoutSignal(t, predCol, actualCol, t.numRows);
 
       const userDefCols = new Map<string, Int8Array>();
-      for (const name of columns) {
-        const parsed = parseTuple2(name);
-        if (
-          parsed &&
-          parsed[0] === behav &&
-          parsed[1] !== "actual" &&
-          parsed[1] !== "pred"
-        ) {
-          userDefCols.set(
-            parsed[1],
-            Int8Array.from(result.getChild(name)!.toArray() as number[]),
-          );
-        }
+      for (const [type, col] of behavUserDefs.get(behav) ?? []) {
+        userDefCols.set(type, readCol(t, col));
       }
 
-      allBouts.push(...framesToBouts(actuals, behav, userDefCols, row0Frame));
+      allBouts.push(...framesToBouts(signal, behav, userDefCols, offset));
     }
 
-    allBouts.sort((a, b) => a.start - b.start || a.behav.localeCompare(b.behav));
+    allBouts.sort(
+      (a, b) => a.start - b.start || a.behav.localeCompare(b.behav),
+    );
     allBouts.forEach((b, i) => {
       b.id = i;
     });
 
     await db.dropFile(pathId);
-    return { bouts: allBouts, numFrames: row0Frame + numRows };
+    return { bouts: allBouts, numFrames: offset + t.numRows };
   } finally {
     await conn.close();
   }
@@ -179,9 +185,7 @@ export async function loadKeypointsParquet(
   try {
     const pathId = `kpts_${Date.now()}.parquet`;
     await db.registerFileBuffer(pathId, buffer);
-    const result = await conn.query(
-      `SELECT * FROM read_parquet('${pathId}')`,
-    );
+    const result = await conn.query(`SELECT * FROM read_parquet('${pathId}')`);
 
     const columns = result.schema.fields.map((f: arrow.Field) => f.name);
     const row0Frame = getRow0Frame(columns, result);
@@ -204,7 +208,9 @@ export async function loadKeypointsParquet(
 
     const indivs = [...new Set(kptKeys.map((k) => k.indiv))];
     const indivColors = generateColors(indivs.length);
-    const indivColorMap = new Map(indivs.map((ind, i) => [ind, indivColors[i]]));
+    const indivColorMap = new Map(
+      indivs.map((ind, i) => [ind, indivColors[i]]),
+    );
 
     const keypointDefs: KeypointDef[] = kptKeys.map(({ key, indiv, bpt }) => ({
       key,
@@ -340,64 +346,41 @@ export async function saveBehavParquet(
       const stopRow = Math.min(bout.stop - row0Frame, totalRows - 1);
       if (startRow < 0 || startRow > stopRow) continue;
 
-      const actualColName = `"${bout.behav}__actual"`;
-      const oldActualColName = `"('${bout.behav}', 'actual')"`;
-
-      const hasNew = originalColumns.includes(`${bout.behav}__actual`);
-      const hasOld = originalColumns.includes(
-        `('${bout.behav}', 'actual')`,
-      );
-
-      if (!hasNew && !hasOld) {
+      const rawActual = findCol(originalColumns, bout.behav, "actual");
+      const actualCol = rawActual
+        ? `"${rawActual}"`
+        : `"${bout.behav}__actual"`;
+      if (!rawActual) {
         await conn.query(
-          `ALTER TABLE data ADD COLUMN ${actualColName} TINYINT DEFAULT 0`,
+          `ALTER TABLE data ADD COLUMN ${actualCol} TINYINT DEFAULT 0`,
         );
       }
-
-      const targetCol = hasNew
-        ? actualColName
-        : hasOld
-          ? oldActualColName
-          : actualColName;
       await conn.query(
-        `UPDATE data SET ${targetCol} = ${bout.actual} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
+        `UPDATE data SET ${actualCol} = ${bout.actual} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
       );
 
       for (const [udKey, udValue] of Object.entries(bout.userDefined)) {
-        const udColName = `"${bout.behav}__${udKey}"`;
-        const oldUdColName = `"('${bout.behav}', '${udKey}')"`;
-
-        const hasUdNew = originalColumns.includes(`${bout.behav}__${udKey}`);
-        const hasUdOld = originalColumns.includes(
-          `('${bout.behav}', '${udKey}')`,
-        );
-
-        if (!hasUdNew && !hasUdOld) {
+        const rawUd = findCol(originalColumns, bout.behav, udKey);
+        const udCol = rawUd ? `"${rawUd}"` : `"${bout.behav}__${udKey}"`;
+        if (!rawUd) {
           await conn.query(
-            `ALTER TABLE data ADD COLUMN ${udColName} TINYINT DEFAULT 0`,
+            `ALTER TABLE data ADD COLUMN ${udCol} TINYINT DEFAULT 0`,
           );
         }
-
-        const targetUdCol = hasUdNew
-          ? udColName
-          : hasUdOld
-            ? oldUdColName
-            : udColName;
         await conn.query(
-          `UPDATE data SET ${targetUdCol} = ${udValue} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
+          `UPDATE data SET ${udCol} = ${udValue} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
         );
       }
     }
 
-    const dropCols: string[] = [];
-    for (const name of originalColumns) {
-      const parsed = parseTuple2(name);
-      if (parsed && parsed[1] === "pred") {
-        dropCols.push(`"${name}"`);
-      }
-    }
-    if (dropCols.length > 0) {
-      await conn.query(`ALTER TABLE data DROP COLUMN ${dropCols.join(", ")}`);
+    const predCols = originalColumns
+      .filter((c) => {
+        const p = parseTuple2(c);
+        return p !== null && p[1] === "pred";
+      })
+      .map((c) => `"${c}"`);
+    if (predCols.length > 0) {
+      await conn.query(`ALTER TABLE data DROP COLUMN ${predCols.join(", ")}`);
     }
 
     await conn.query(
@@ -408,7 +391,6 @@ export async function saveBehavParquet(
 
     await db.dropFile(inId);
     await db.dropFile(outId);
-    dropCols.length = 0;
 
     return exported;
   } finally {

@@ -32,9 +32,9 @@ export function resolveExperimentPaths(configPath: string): ExperimentPaths {
     configPath,
     name,
     videoPath: joinFn(root, "2_formatted_vid", `${name}.mp4`),
-    behavsPath: joinFn(root, "7_scored_behavs", `${name}.parquet`),
     keypointsPath: joinFn(root, "4_preprocessed", `${name}.parquet`),
     featuresPath: joinFn(root, "5_features_extracted", `${name}.parquet`),
+    behavsPath: joinFn(root, "7_scored_behavs", `${name}.parquet`),
   };
 }
 
