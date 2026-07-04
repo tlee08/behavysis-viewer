@@ -276,7 +276,7 @@ export async function saveBehavParquet(
     const row0Frame = getRow0Frame(originalColumns, row0Result);
 
     await conn.query(
-      `CREATE TABLE data AS SELECT * FROM read_parquet('${inId}')`,
+      `CREATE OR REPLACE TABLE data AS SELECT * FROM read_parquet('${inId}')`,
     );
 
     const countResult = await conn.query(`SELECT count(*) as n FROM data`);
