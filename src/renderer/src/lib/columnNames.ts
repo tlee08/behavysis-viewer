@@ -1,12 +1,3 @@
-export function parseTuple2(s: string): [string, string] | null {
-  const idx = s.indexOf("__");
-  if (idx > 0) {
-    return [s.slice(0, idx), s.slice(idx + 2)];
-  }
-  const m = s.match(/^\(\s*'(.+?)'\s*,\s*'(.+?)'\s*\)$/);
-  return m ? [m[1], m[2]] : null;
-}
-
 export function parseTuple4(
   s: string,
 ): [string, string, string, string] | null {

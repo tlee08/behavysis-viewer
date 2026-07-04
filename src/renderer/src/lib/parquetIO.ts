@@ -5,9 +5,8 @@ import type {
   KeypointDef,
   KeypointFrame,
 } from "../../../shared/types";
-import { UNSURE } from "../../../shared/types";
 import { generateColors } from "./colors";
-import { parseKptColumns, parseTuple2 } from "./columnNames";
+import { parseKptColumns } from "./columnNames";
 import { getDuckDB } from "./duckdb";
 
 function clampActual(v: number): -2 | -1 | 0 | 1 {
@@ -30,50 +29,6 @@ function getRow0Frame(columns: string[], table: arrow.Table): number {
 
 function readCol(t: arrow.Table, name: string): Int8Array {
   return Int8Array.from(t.getChild(name)!.toArray() as number[]);
-}
-
-function findCol(
-  columns: string[],
-  behav: string,
-  type: string,
-): string | null {
-  const newName = `${behav}__${type}`;
-  if (columns.includes(newName)) return newName;
-  const oldName = `('${behav}', '${type}')`;
-  return columns.includes(oldName) ? oldName : null;
-}
-
-function buildBoutSignal(
-  t: arrow.Table,
-  predCol: string | null,
-  actualCol: string | null,
-  numRows: number,
-): Int8Array {
-  if (predCol && actualCol) {
-    const preds = readCol(t, predCol);
-    const oldActuals = readCol(t, actualCol);
-    const signal = new Int8Array(numRows);
-    for (let i = 0; i < numRows; i++) {
-      if (preds[i] === 0) {
-        signal[i] = 0;
-      } else {
-        const a = oldActuals[i];
-        if (a >= 1) signal[i] = 1;
-        else if (a === 0) signal[i] = -1;
-        else signal[i] = -2;
-      }
-    }
-    return signal;
-  }
-
-  if (predCol && !actualCol) {
-    const preds = readCol(t, predCol);
-    const signal = new Int8Array(numRows);
-    for (let i = 0; i < numRows; i++) signal[i] = preds[i] === 1 ? UNSURE : 0;
-    return signal;
-  }
-
-  return readCol(t, actualCol!);
 }
 
 function framesToBouts(
@@ -127,35 +82,19 @@ export async function loadBehavParquet(
     const columns = t.schema.fields.map((f: arrow.Field) => f.name);
     const offset = getRow0Frame(columns, t);
 
-    const behavUserDefs = new Map<string, Map<string, string>>();
-    const behavNames = new Set<string>();
-
-    for (const col of columns) {
-      const parsed = parseTuple2(col);
-      if (parsed) {
-        const [behav, type] = parsed;
-        if (type === "pred") continue;
-        behavNames.add(behav);
-        if (type !== "actual") {
-          if (!behavUserDefs.has(behav)) behavUserDefs.set(behav, new Map());
-          behavUserDefs.get(behav)!.set(type, col);
-        }
-      }
-    }
-
     const allBouts: Bout[] = [];
 
-    for (const behav of behavNames) {
-      const predCol = findCol(columns, behav, "pred");
-      const actualCol = findCol(columns, behav, "actual");
+    for (const col of columns) {
+      if (!col.endsWith("__actual")) continue;
 
-      if (!predCol && !actualCol) continue;
-
-      const signal = buildBoutSignal(t, predCol, actualCol, t.numRows);
+      const behav = col.slice(0, -8); // strip '__actual'
+      const signal = readCol(t, col);
 
       const userDefCols = new Map<string, Int8Array>();
-      for (const [type, col] of behavUserDefs.get(behav) ?? []) {
-        userDefCols.set(type, readCol(t, col));
+      for (const c of columns) {
+        if (c === col || !c.startsWith(behav + "__")) continue;
+        const type = c.slice(behav.length + 2);
+        userDefCols.set(type, readCol(t, c));
       }
 
       allBouts.push(...framesToBouts(signal, behav, userDefCols, offset));
@@ -341,46 +280,34 @@ export async function saveBehavParquet(
     const countResult = await conn.query(`SELECT count(*) as n FROM data`);
     const totalRows = Number(countResult.getChild("n")!.get(0));
 
+    const added = new Set(originalColumns);
+    const ensureCol = async (name: string) => {
+      if (!added.has(name)) {
+        added.add(name);
+        await conn.query(
+          `ALTER TABLE data ADD COLUMN "${name}" TINYINT DEFAULT 0`,
+        );
+      }
+    };
+
     for (const bout of bouts) {
       const startRow = bout.start - row0Frame;
       const stopRow = Math.min(bout.stop - row0Frame, totalRows - 1);
       if (startRow < 0 || startRow > stopRow) continue;
 
-      const rawActual = findCol(originalColumns, bout.behav, "actual");
-      const actualCol = rawActual
-        ? `"${rawActual}"`
-        : `"${bout.behav}__actual"`;
-      if (!rawActual) {
-        await conn.query(
-          `ALTER TABLE data ADD COLUMN ${actualCol} TINYINT DEFAULT 0`,
-        );
-      }
+      const actualName = `${bout.behav}__actual`;
+      await ensureCol(actualName);
       await conn.query(
-        `UPDATE data SET ${actualCol} = ${bout.actual} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
+        `UPDATE data SET "${actualName}" = ${bout.actual} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
       );
 
       for (const [udKey, udValue] of Object.entries(bout.userDefined)) {
-        const rawUd = findCol(originalColumns, bout.behav, udKey);
-        const udCol = rawUd ? `"${rawUd}"` : `"${bout.behav}__${udKey}"`;
-        if (!rawUd) {
-          await conn.query(
-            `ALTER TABLE data ADD COLUMN ${udCol} TINYINT DEFAULT 0`,
-          );
-        }
+        const udName = `${bout.behav}__${udKey}`;
+        await ensureCol(udName);
         await conn.query(
-          `UPDATE data SET ${udCol} = ${udValue} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
+          `UPDATE data SET "${udName}" = ${udValue} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
         );
       }
-    }
-
-    const predCols = originalColumns
-      .filter((c) => {
-        const p = parseTuple2(c);
-        return p !== null && p[1] === "pred";
-      })
-      .map((c) => `"${c}"`);
-    if (predCols.length > 0) {
-      await conn.query(`ALTER TABLE data DROP COLUMN ${predCols.join(", ")}`);
     }
 
     await conn.query(
