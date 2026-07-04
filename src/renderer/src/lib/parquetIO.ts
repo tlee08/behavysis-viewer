@@ -82,18 +82,26 @@ export async function loadBehavParquet(
     const columns = t.schema.fields.map((f: arrow.Field) => f.name);
     const offset = getRow0Frame(columns, t);
 
+    const udIndex = new Map<string, Map<string, string>>();
+    for (const c of columns) {
+      const sep = c.indexOf("__");
+      if (sep < 0 || c.endsWith("__actual")) continue;
+      const behav = c.slice(0, sep);
+      const type = c.slice(sep + 2);
+      if (!udIndex.has(behav)) udIndex.set(behav, new Map());
+      udIndex.get(behav)!.set(type, c);
+    }
+
     const allBouts: Bout[] = [];
 
     for (const col of columns) {
       if (!col.endsWith("__actual")) continue;
 
-      const behav = col.slice(0, -8); // strip '__actual'
+      const behav = col.slice(0, -8);
       const signal = readCol(t, col);
 
       const userDefCols = new Map<string, Int8Array>();
-      for (const c of columns) {
-        if (c === col || !c.startsWith(behav + "__")) continue;
-        const type = c.slice(behav.length + 2);
+      for (const [type, c] of udIndex.get(behav) ?? []) {
         userDefCols.set(type, readCol(t, c));
       }
 
@@ -103,9 +111,7 @@ export async function loadBehavParquet(
     allBouts.sort(
       (a, b) => a.start - b.start || a.behav.localeCompare(b.behav),
     );
-    allBouts.forEach((b, i) => {
-      b.id = i;
-    });
+    allBouts.forEach((b, i) => (b.id = i));
 
     await db.dropFile(pathId);
     return { bouts: allBouts, numFrames: offset + t.numRows };
@@ -261,15 +267,11 @@ export async function saveBehavParquet(
     const outId = `save_out_${Date.now()}.parquet`;
     await db.registerFileBuffer(inId, originalBuffer);
 
-    const colsResult = await conn.query(
-      `SELECT * FROM read_parquet('${inId}') LIMIT 0`,
-    );
-    const originalColumns = colsResult.schema.fields.map(
-      (f: arrow.Field) => f.name,
-    );
-
     const row0Result = await conn.query(
       `SELECT * FROM read_parquet('${inId}') LIMIT 1`,
+    );
+    const originalColumns = row0Result.schema.fields.map(
+      (f: arrow.Field) => f.name,
     );
     const row0Frame = getRow0Frame(originalColumns, row0Result);
 
