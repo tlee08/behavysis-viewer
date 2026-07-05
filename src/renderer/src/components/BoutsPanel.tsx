@@ -15,7 +15,7 @@ export function BoutsPanel(): React.ReactElement {
     setCurrentFrame,
     focusSizeSeconds,
   } = useStore();
-  const fps = useStore((s) => s.videoMetadata?.fps ?? s.config?.fps ?? 15);
+  const fps = useStore((s) => s.config!.fps);
   const parentRef = useRef<HTMLDivElement>(null);
 
   const virtualizer = useVirtualizer({

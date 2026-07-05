@@ -7,7 +7,7 @@ import { useStore } from "../../store";
 
 export function PlaybackBar() {
   const { currentFrame } = useStore();
-  const fps = useStore((s) => s.videoMetadata?.fps ?? s.config?.fps ?? 15);
+  const fps = useStore((s) => s.config!.fps);
   const timeStr = frameToTimecode(currentFrame, fps);
 
   return (

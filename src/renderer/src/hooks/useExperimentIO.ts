@@ -58,8 +58,8 @@ export function useExperimentIO() {
         const behavBytes = await readFile(expPaths.behavsPath);
         const result = await loadBehavParquet(new Uint8Array(behavBytes));
         parsedBouts = result.bouts;
-      } catch {
-        // No bouts file — start with empty bout list
+      } catch (err) {
+        console.warn("No behaviour bouts file:", String(err));
       }
 
       let keypointDefs: KeypointDef[] = [];
@@ -72,16 +72,16 @@ export function useExperimentIO() {
         );
         keypointDefs = parsed.keypointDefs;
         keypointFrames = parsed.keypointFrames;
-      } catch {
-        // Keypoints file absent — silently skip
+      } catch (err) {
+        console.warn("No keypoints file:", String(err));
       }
 
       let featureCols: string[] = [];
       try {
         const featBytes = await readFile(expPaths.featuresPath);
         featureCols = await loadFeatureColumns(new Uint8Array(featBytes));
-      } catch {
-        // Features file absent — silently skip
+      } catch (err) {
+        console.warn("No features file:", String(err));
       }
 
       loadExperiment(

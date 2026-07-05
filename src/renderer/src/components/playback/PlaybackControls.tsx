@@ -18,7 +18,7 @@ export function PlaybackControls() {
     setIsPlaying,
     setCurrentFrame,
   } = useStore();
-  const fps = useStore((s) => s.videoMetadata?.fps ?? s.config?.fps ?? 15);
+  const fps = useStore((s) => s.config!.fps);
 
   return (
     <Group gap={4}>

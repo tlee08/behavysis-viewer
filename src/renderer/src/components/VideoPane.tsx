@@ -27,9 +27,9 @@ export function VideoPane({ reader, metadata }: Props) {
     setIsPlaying,
   } = useStore();
 
-  const fps = metadata?.fps ?? 15;
-  const w = config?.widthPx ?? 640;
-  const h = config?.heightPx ?? 480;
+  const fps = config!.fps;
+  const w = config!.widthPx;
+  const h = config!.heightPx;
 
   const drawFrame = useCallback(
     (i: number) => {
@@ -58,9 +58,9 @@ export function VideoPane({ reader, metadata }: Props) {
       ctx.clearRect(0, 0, w, h);
       if (!showKeypoints || !keypointFrames[i]) return;
 
-      const r = config?.keypointRadius ?? 5;
-      const sx = w / (config?.widthPx ?? w);
-      const sy = h / (config?.heightPx ?? h);
+      const r = config!.keypointRadius;
+      const sx = w / config!.widthPx;
+      const sy = h / config!.heightPx;
 
       for (const d of keypointDefs) {
         const k = keypointFrames[i][d.key];

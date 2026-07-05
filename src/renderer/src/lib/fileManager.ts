@@ -1,4 +1,19 @@
-import type { ExperimentPaths } from "../../../shared/types";
+import type { AppConfig, ExperimentPaths } from "../../../shared/types";
+
+function required(msg: string): never {
+  throw new Error(msg);
+}
+
+function asObj(v: unknown, path: string): Record<string, unknown> {
+  if (typeof v !== "object" || v === null) throw new Error(`${path} must be an object`);
+  return v as Record<string, unknown>;
+}
+
+function getNum(obj: Record<string, unknown>, key: string): number {
+  const v = obj[key];
+  if (typeof v !== "number") throw new Error(`"${key}" must be a number`);
+  return v;
+}
 
 function sep(p: string) {
   return p.includes("\\") ? "\\" : "/";
@@ -38,29 +53,29 @@ export function resolveExperimentPaths(configPath: string): ExperimentPaths {
   };
 }
 
-export function parseAppConfig(raw: Record<string, unknown>): {
-  fps: number;
-  numFrames: number;
-  startFrame: number;
-  stopFrame: number;
-  keypointPcutoff: number;
-  keypointRadius: number;
-  widthPx: number;
-  heightPx: number;
-} {
-  const auto: any = raw.auto ?? {};
-  const user: any = raw.user ?? {};
-  const evaluateVid: any = user.evaluate_vid ?? {};
-  const autoFormattedVid: any = auto.formatted_vid ?? {};
+export function parseAppConfig(raw: Record<string, unknown>): AppConfig {
+  const auto = asObj(raw.auto ?? required("config missing 'auto'"), "auto");
+  const formatted = asObj(
+    auto.formatted_vid ?? required("config missing 'auto.formatted_vid'"),
+    "auto.formatted_vid",
+  );
+  const user = asObj(
+    raw.user ?? required("config missing 'user'"),
+    "user",
+  );
+  const evaluateVid = asObj(
+    user.evaluate_vid ?? required("config missing 'user.evaluate_vid'"),
+    "user.evaluate_vid",
+  );
 
   return {
-    fps: Number(autoFormattedVid.fps),
-    numFrames: Number(autoFormattedVid.total_frames),
-    startFrame: Number(auto.start_frame ?? 0),
-    stopFrame: Number(auto.stop_frame ?? 0),
-    keypointPcutoff: Number(evaluateVid.pcutoff),
-    keypointRadius: Number(evaluateVid.radius),
-    widthPx: Number(autoFormattedVid.width_px),
-    heightPx: Number(autoFormattedVid.height_px),
+    fps: getNum(formatted, "fps"),
+    numFrames: getNum(formatted, "total_frames"),
+    startFrame: getNum(auto, "start_frame"),
+    stopFrame: getNum(auto, "stop_frame"),
+    keypointPcutoff: getNum(evaluateVid, "pcutoff"),
+    keypointRadius: getNum(evaluateVid, "radius"),
+    widthPx: getNum(formatted, "width_px"),
+    heightPx: getNum(formatted, "height_px"),
   };
 }

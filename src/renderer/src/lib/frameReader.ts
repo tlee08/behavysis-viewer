@@ -4,7 +4,6 @@ export interface FrameMetadata {
   codec: string;
   codedWidth: number;
   codedHeight: number;
-  fps: number;
   totalFrames: number;
   keyframeIndices: number[];
   timescale: number;
@@ -59,7 +58,6 @@ export class FrameReader {
               ),
               codedWidth: vt.video?.width ?? vt.track_width,
               codedHeight: vt.video?.height ?? vt.track_height,
-              fps: vt.nb_samples / (vt.samples_duration / vt.timescale),
               totalFrames: vt.nb_samples,
               keyframeIndices: kfs,
               timescale: vt.timescale,

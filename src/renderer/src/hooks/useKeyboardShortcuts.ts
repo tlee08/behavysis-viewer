@@ -20,7 +20,7 @@ export function useKeyboardShortcuts(): void {
         focusSizeSeconds,
         jumpSeconds,
       } = state;
-      const fps = videoMetadata?.fps ?? config?.fps ?? 15;
+      const fps = config!.fps;
 
       switch (e.key) {
         case " ":

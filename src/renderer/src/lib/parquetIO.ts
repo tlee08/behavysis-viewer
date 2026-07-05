@@ -28,7 +28,9 @@ function getRow0Frame(columns: string[], table: arrow.Table): number {
 }
 
 function readCol(t: arrow.Table, name: string): Int8Array {
-  return Int8Array.from(t.getChild(name)!.toArray() as number[]);
+  const child = t.getChild(name);
+  if (!child) throw new Error(`Column not found: ${name}`);
+  return Int8Array.from(child.toArray() as number[]);
 }
 
 function framesToBouts(
@@ -74,8 +76,9 @@ export async function loadBehavParquet(
   const db = await getDuckDB();
   const conn = await db.connect();
 
+  let pathId: string | null = null;
   try {
-    const pathId = `behav_${Date.now()}.parquet`;
+    pathId = `behav_${Date.now()}.parquet`;
     await db.registerFileBuffer(pathId, buffer);
     const t = await conn.query(`SELECT * FROM read_parquet('${pathId}')`);
 
@@ -113,9 +116,9 @@ export async function loadBehavParquet(
     );
     allBouts.forEach((b, i) => (b.id = i));
 
-    await db.dropFile(pathId);
     return { bouts: allBouts, numFrames: offset + t.numRows };
   } finally {
+    if (pathId) try { await db.dropFile(pathId); } catch {}
     await conn.close();
   }
 }
@@ -127,8 +130,9 @@ export async function loadKeypointsParquet(
   const db = await getDuckDB();
   const conn = await db.connect();
 
+  let pathId: string | null = null;
   try {
-    const pathId = `kpts_${Date.now()}.parquet`;
+    pathId = `kpts_${Date.now()}.parquet`;
     await db.registerFileBuffer(pathId, buffer);
     const result = await conn.query(`SELECT * FROM read_parquet('${pathId}')`);
 
@@ -137,7 +141,6 @@ export async function loadKeypointsParquet(
     const kptCols = parseKptColumns(columns);
 
     if (kptCols.length === 0) {
-      await db.dropFile(pathId);
       return { keypointDefs: [], keypointFrames: [] };
     }
 
@@ -169,7 +172,9 @@ export async function loadKeypointsParquet(
     const keypointFrames: KeypointFrame[] = new Array(totalFrames);
 
     for (const { arrowName, indiv, bpt, coord } of kptCols) {
-      const vec = result.getChild(arrowName)!.toArray();
+      const child = result.getChild(arrowName);
+      if (!child) continue;
+      const vec = child.toArray();
       const key = `${indiv}_${bpt}`;
       for (let i = 0; i < numRows; i++) {
         const frameIdx = row0Frame + i;
@@ -196,9 +201,9 @@ export async function loadKeypointsParquet(
       }
     }
 
-    await db.dropFile(pathId);
     return { keypointDefs, keypointFrames };
   } finally {
+    if (pathId) try { await db.dropFile(pathId); } catch {}
     await conn.close();
   }
 }
@@ -209,15 +214,16 @@ export async function loadFeatureColumns(
   const db = await getDuckDB();
   const conn = await db.connect();
 
+  let pathId: string | null = null;
   try {
-    const pathId = `feat_${Date.now()}.parquet`;
+    pathId = `feat_${Date.now()}.parquet`;
     await db.registerFileBuffer(pathId, buffer);
     const result = await conn.query(
       `SELECT * FROM read_parquet('${pathId}') LIMIT 1`,
     );
-    await db.dropFile(pathId);
     return result.schema.fields.map((f: arrow.Field) => f.name);
   } finally {
+    if (pathId) try { await db.dropFile(pathId); } catch {}
     await conn.close();
   }
 }
@@ -231,8 +237,9 @@ export async function loadFeatureData(
   const db = await getDuckDB();
   const conn = await db.connect();
 
+  let pathId: string | null = null;
   try {
-    const pathId = `featd_${Date.now()}.parquet`;
+    pathId = `featd_${Date.now()}.parquet`;
     await db.registerFileBuffer(pathId, buffer);
 
     const colList = columns.map((c: string) => `"${c}"`).join(", ");
@@ -248,9 +255,9 @@ export async function loadFeatureData(
       }
     }
 
-    await db.dropFile(pathId);
     return data;
   } finally {
+    if (pathId) try { await db.dropFile(pathId); } catch {}
     await conn.close();
   }
 }
@@ -263,8 +270,9 @@ export async function saveBehavParquet(
   const db = await getDuckDB();
   const conn = await db.connect();
 
+  let outId: string | null = null;
   try {
-    const outId = `save_out_${Date.now()}.parquet`;
+    outId = `save_out_${Date.now()}.parquet`;
 
     await conn.query(
       `CREATE OR REPLACE TABLE data AS SELECT generate_series AS "frame" FROM generate_series(${startFrame}, ${stopFrame})`,
@@ -310,11 +318,9 @@ export async function saveBehavParquet(
       `COPY data TO '${outId}' (FORMAT PARQUET, COMPRESSION ZSTD)`,
     );
 
-    const exported = await db.copyFileToBuffer(outId);
-    await db.dropFile(outId);
-
-    return exported;
+    return await db.copyFileToBuffer(outId);
   } finally {
+    if (outId) try { await db.dropFile(outId); } catch {}
     await conn.close();
   }
 }

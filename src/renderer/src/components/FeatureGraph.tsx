@@ -39,8 +39,8 @@ export function FeatureGraph({ height }: Props) {
   } = useStore();
 
   const [startFrame, endFrame] = useVisibleRange();
-  const fps = videoMetadata?.fps ?? config?.fps ?? 15;
-  const dataOffset = config?.startFrame ?? 0;
+  const fps = config!.fps;
+  const dataOffset = config!.startFrame;
 
   useEffect(() => {
     const el = containerRef.current;
