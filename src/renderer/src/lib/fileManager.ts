@@ -42,6 +42,7 @@ export function parseAppConfig(raw: Record<string, unknown>): {
   fps: number;
   numFrames: number;
   startFrame: number;
+  stopFrame: number;
   keypointPcutoff: number;
   keypointRadius: number;
   widthPx: number;
@@ -56,6 +57,7 @@ export function parseAppConfig(raw: Record<string, unknown>): {
     fps: Number(autoFormattedVid.fps),
     numFrames: Number(autoFormattedVid.total_frames),
     startFrame: Number(auto.start_frame ?? 0),
+    stopFrame: Number(auto.stop_frame ?? 0),
     keypointPcutoff: Number(evaluateVid.pcutoff),
     keypointRadius: Number(evaluateVid.radius),
     widthPx: Number(autoFormattedVid.width_px),

@@ -256,59 +256,53 @@ export async function loadFeatureData(
 }
 
 export async function saveBehavParquet(
-  originalBuffer: Uint8Array,
+  startFrame: number,
+  stopFrame: number,
   bouts: Bout[],
 ): Promise<Uint8Array> {
   const db = await getDuckDB();
   const conn = await db.connect();
 
   try {
-    const inId = `save_in_${Date.now()}.parquet`;
     const outId = `save_out_${Date.now()}.parquet`;
-    await db.registerFileBuffer(inId, originalBuffer);
-
-    const row0Result = await conn.query(
-      `SELECT * FROM read_parquet('${inId}') LIMIT 1`,
-    );
-    const originalColumns = row0Result.schema.fields.map(
-      (f: arrow.Field) => f.name,
-    );
-    const row0Frame = getRow0Frame(originalColumns, row0Result);
 
     await conn.query(
-      `CREATE OR REPLACE TABLE data AS SELECT * FROM read_parquet('${inId}')`,
+      `CREATE OR REPLACE TABLE data AS SELECT generate_series AS "frame" FROM generate_series(${startFrame}, ${stopFrame})`,
     );
 
-    const countResult = await conn.query(`SELECT count(*) as n FROM data`);
-    const totalRows = Number(countResult.getChild("n")!.get(0));
+    const byBehav = new Map<string, Bout[]>();
+    const udKeys = new Map<string, Set<string>>();
+    for (const b of bouts) {
+      if (!byBehav.has(b.behav)) byBehav.set(b.behav, []);
+      byBehav.get(b.behav)!.push(b);
+      for (const k of Object.keys(b.userDefined)) {
+        if (!udKeys.has(b.behav)) udKeys.set(b.behav, new Set());
+        udKeys.get(b.behav)!.add(k);
+      }
+    }
 
-    const added = new Set(originalColumns);
-    const ensureCol = async (name: string) => {
-      if (!added.has(name)) {
-        added.add(name);
+    for (const [behav, behavBouts] of byBehav) {
+      await conn.query(
+        `ALTER TABLE data ADD COLUMN "${behav}__actual" TINYINT DEFAULT 0`,
+      );
+      for (const b of behavBouts) {
         await conn.query(
-          `ALTER TABLE data ADD COLUMN "${name}" TINYINT DEFAULT 0`,
+          `UPDATE data SET "${behav}__actual" = ${b.actual} WHERE "frame" BETWEEN ${b.start} AND ${b.stop}`,
         );
       }
-    };
 
-    for (const bout of bouts) {
-      const startRow = bout.start - row0Frame;
-      const stopRow = Math.min(bout.stop - row0Frame, totalRows - 1);
-      if (startRow < 0 || startRow > stopRow) continue;
-
-      const actualName = `${bout.behav}__actual`;
-      await ensureCol(actualName);
-      await conn.query(
-        `UPDATE data SET "${actualName}" = ${bout.actual} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
-      );
-
-      for (const [udKey, udValue] of Object.entries(bout.userDefined)) {
-        const udName = `${bout.behav}__${udKey}`;
-        await ensureCol(udName);
+      for (const udKey of udKeys.get(behav) ?? []) {
         await conn.query(
-          `UPDATE data SET "${udName}" = ${udValue} WHERE rowid BETWEEN ${startRow + 1} AND ${stopRow + 1}`,
+          `ALTER TABLE data ADD COLUMN "${behav}__${udKey}" TINYINT DEFAULT 0`,
         );
+        for (const b of behavBouts) {
+          const val = b.userDefined[udKey];
+          if (val !== undefined) {
+            await conn.query(
+              `UPDATE data SET "${behav}__${udKey}" = ${val} WHERE "frame" BETWEEN ${b.start} AND ${b.stop}`,
+            );
+          }
+        }
       }
     }
 
@@ -317,8 +311,6 @@ export async function saveBehavParquet(
     );
 
     const exported = await db.copyFileToBuffer(outId);
-
-    await db.dropFile(inId);
     await db.dropFile(outId);
 
     return exported;

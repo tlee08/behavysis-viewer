@@ -48,6 +48,7 @@ export interface AppConfig {
   fps: number;
   numFrames: number;
   startFrame: number;
+  stopFrame: number;
   keypointPcutoff: number;
   keypointRadius: number;
   widthPx: number;

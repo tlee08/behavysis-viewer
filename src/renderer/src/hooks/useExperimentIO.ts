@@ -21,7 +21,7 @@ export function useExperimentIO() {
   );
   const readerRef = useRef<FrameReader | null>(null);
 
-  const { paths, bouts, loadExperiment, setVideoMetadata, setFeatureColumns } =
+  const { paths, bouts, config, loadExperiment, setVideoMetadata, setFeatureColumns } =
     useStore();
 
   useEffect(() => {
@@ -101,14 +101,14 @@ export function useExperimentIO() {
   }, [loadExperiment, setVideoMetadata, setFeatureColumns]);
 
   const save = useCallback(async () => {
-    if (!paths) {
+    if (!paths || !config) {
       setStatus("Nothing to save");
       return;
     }
     try {
-      const originalBytes = await readFile(paths.behavsPath);
       const updatedBuffer = await saveBehavParquet(
-        new Uint8Array(originalBytes),
+        config.startFrame,
+        config.stopFrame,
         bouts,
       );
       await writeFile(paths.behavsPath, updatedBuffer);
@@ -116,7 +116,7 @@ export function useExperimentIO() {
     } catch (err) {
       setStatus(`Save failed: ${String(err)}`);
     }
-  }, [paths, bouts]);
+  }, [paths, config, bouts]);
 
   return { reader, metadata, status, open: openExperiment, save };
 }
