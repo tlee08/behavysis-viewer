@@ -1,16 +1,15 @@
-import { useCallback, useEffect, useRef, useState } from "react";
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile, readTextFile, writeFile } from "@tauri-apps/plugin-fs";
-import type { Bout, KeypointDef, KeypointFrame } from "../../../shared/types";
+import { useCallback, useEffect, useRef, useState } from "react";
+import type { Bout, KeypointData } from "../../../shared/types";
 import { parseAppConfig, resolveExperimentPaths } from "../lib/fileManager";
+import { FrameReader, type FrameMetadata } from "../lib/frameReader";
 import {
   loadBehavParquet,
-  loadKeypointsParquet,
   loadFeatureColumns,
-  loadFeatureData,
+  loadKeypointsParquet,
   saveBehavParquet,
 } from "../lib/parquetIO";
-import { FrameReader, type FrameMetadata } from "../lib/frameReader";
 import { useStore } from "../store";
 
 export function useExperimentIO() {
@@ -21,8 +20,14 @@ export function useExperimentIO() {
   );
   const readerRef = useRef<FrameReader | null>(null);
 
-  const { paths, bouts, config, loadExperiment, setVideoMetadata, setFeatureColumns } =
-    useStore();
+  const {
+    paths,
+    bouts,
+    config,
+    loadExperiment,
+    setVideoMetadata,
+    setFeatureColumns,
+  } = useStore();
 
   useEffect(() => {
     return () => {
@@ -56,22 +61,15 @@ export function useExperimentIO() {
       let parsedBouts: Bout[] = [];
       try {
         const behavBytes = await readFile(expPaths.behavsPath);
-        const result = await loadBehavParquet(new Uint8Array(behavBytes));
-        parsedBouts = result.bouts;
+        parsedBouts = await loadBehavParquet(new Uint8Array(behavBytes));
       } catch (err) {
         console.warn("No behaviour bouts file:", String(err));
       }
 
-      let keypointDefs: KeypointDef[] = [];
-      let keypointFrames: KeypointFrame[] = [];
+      let keypoints: KeypointData | null = null;
       try {
         const kptBytes = await readFile(expPaths.keypointsPath);
-        const parsed = await loadKeypointsParquet(
-          new Uint8Array(kptBytes),
-          appConfig.keypointPcutoff,
-        );
-        keypointDefs = parsed.keypointDefs;
-        keypointFrames = parsed.keypointFrames;
+        keypoints = await loadKeypointsParquet(new Uint8Array(kptBytes));
       } catch (err) {
         console.warn("No keypoints file:", String(err));
       }
@@ -89,8 +87,7 @@ export function useExperimentIO() {
         appConfig,
         newReader.metadata.totalFrames,
         parsedBouts,
-        keypointDefs,
-        keypointFrames,
+        keypoints,
       );
 
       setFeatureColumns(featureCols);

@@ -1,231 +1,161 @@
-import type * as arrow from "apache-arrow";
+import {
+  parquetMetadataAsync,
+  parquetReadObjects,
+  parquetSchema,
+} from "hyparquet";
+import { compressors } from "hyparquet-compressors";
+import { parquetWriteBuffer } from "hyparquet-writer";
 import type {
   ActualValue,
   Bout,
+  KeypointData,
   KeypointDef,
-  KeypointFrame,
 } from "../../../shared/types";
 import { generateColors } from "./colors";
-import { parseKptColumns } from "./columnNames";
-import { getDuckDB } from "./duckdb";
 
-function clampActual(v: number): -2 | -1 | 0 | 1 {
+type Row = Record<string, unknown>;
+
+function toArrayBuffer(buffer: Uint8Array): ArrayBuffer {
+  return buffer.buffer.slice(
+    buffer.byteOffset,
+    buffer.byteOffset + buffer.byteLength,
+  ) as ArrayBuffer;
+}
+
+function clampActual(v: number): ActualValue {
   if (v >= 1) return 1;
   if (v <= -2) return -2;
   if (v === -1) return -1;
   return 0;
 }
 
-function getRow0Frame(columns: string[], table: arrow.Table): number {
-  const indexCols = ["__index_level_0__", "frame"];
-  for (const name of indexCols) {
-    if (columns.includes(name)) {
-      const col = table.getChild(name);
-      if (col && col.length > 0) return Number(col.get(0));
-    }
-  }
-  return 0;
-}
-
-function readCol(t: arrow.Table, name: string): Int8Array {
-  const child = t.getChild(name);
-  if (!child) throw new Error(`Column not found: ${name}`);
-  return Int8Array.from(child.toArray() as number[]);
-}
-
-function framesToBouts(
-  signal: Int8Array,
-  behav: string,
-  userDefCols: Map<string, Int8Array>,
-  offset: number,
-): Bout[] {
-  const bouts: Bout[] = [];
-  const len = signal.length;
-
-  const emit = (start: number, stop: number) => {
-    const userDefined: Record<string, ActualValue> = {};
-    for (const [key, vec] of userDefCols) {
-      userDefined[key] = clampActual(vec[start]);
-    }
-    bouts.push({
-      id: 0,
-      start: start + offset,
-      stop: stop + offset,
-      behav,
-      actual: clampActual(signal[start]),
-      userDefined,
-    });
-  };
-
-  let run = -1;
-  for (let i = 0; i <= len; i++) {
-    if (i < len && signal[i] !== 0) {
-      if (run === -1) run = i;
-    } else if (run !== -1) {
-      emit(run, i - 1);
-      run = -1;
-    }
-  }
-
-  return bouts;
-}
-
-export async function loadBehavParquet(
+async function readRows(
   buffer: Uint8Array,
-): Promise<{ bouts: Bout[]; numFrames: number }> {
-  const db = await getDuckDB();
-  const conn = await db.connect();
-
-  let pathId: string | null = null;
-  try {
-    pathId = `behav_${Date.now()}.parquet`;
-    await db.registerFileBuffer(pathId, buffer);
-    const t = await conn.query(`SELECT * FROM read_parquet('${pathId}')`);
-
-    const columns = t.schema.fields.map((f: arrow.Field) => f.name);
-    const offset = getRow0Frame(columns, t);
-
-    const udIndex = new Map<string, Map<string, string>>();
-    for (const c of columns) {
-      const sep = c.indexOf("__");
-      if (sep < 0 || c.endsWith("__actual")) continue;
-      const behav = c.slice(0, sep);
-      const type = c.slice(sep + 2);
-      if (!udIndex.has(behav)) udIndex.set(behav, new Map());
-      udIndex.get(behav)!.set(type, c);
-    }
-
-    const allBouts: Bout[] = [];
-
-    for (const col of columns) {
-      if (!col.endsWith("__actual")) continue;
-
-      const behav = col.slice(0, -8);
-      const signal = readCol(t, col);
-
-      const userDefCols = new Map<string, Int8Array>();
-      for (const [type, c] of udIndex.get(behav) ?? []) {
-        userDefCols.set(type, readCol(t, c));
-      }
-
-      allBouts.push(...framesToBouts(signal, behav, userDefCols, offset));
-    }
-
-    allBouts.sort(
-      (a, b) => a.start - b.start || a.behav.localeCompare(b.behav),
-    );
-    allBouts.forEach((b, i) => (b.id = i));
-
-    return { bouts: allBouts, numFrames: offset + t.numRows };
-  } finally {
-    if (pathId) try { await db.dropFile(pathId); } catch {}
-    await conn.close();
-  }
+  columns?: string[],
+): Promise<Row[]> {
+  return parquetReadObjects({
+    file: toArrayBuffer(buffer),
+    compressors,
+    columns,
+  });
 }
 
+// 7_behaviour_scored: long-form (frame, behaviour, actual, [user_defined...]).
+// One row per (frame, behaviour). A bout is a contiguous run of non-zero
+// `actual` frames within a behaviour.
+export async function loadBehavParquet(buffer: Uint8Array): Promise<Bout[]> {
+  const rows = await readRows(buffer);
+  if (rows.length === 0) return [];
+
+  const userCols = Object.keys(rows[0]).filter(
+    (c) => c !== "frame" && c !== "behaviour" && c !== "actual",
+  );
+
+  const rowsByBehav = new Map<string, Row[]>();
+  for (const r of rows) {
+    const behav = String(r.behaviour);
+    if (!rowsByBehav.has(behav)) rowsByBehav.set(behav, []);
+    rowsByBehav.get(behav)!.push(r);
+  }
+
+  const allBouts: Bout[] = [];
+  for (const [behav, behavRows] of rowsByBehav) {
+    behavRows.sort((a, b) => Number(a.frame) - Number(b.frame));
+
+    const behavUserCols = userCols.filter((c) =>
+      behavRows.some((r) => r[c] != null),
+    );
+
+    let run = -1;
+    for (let k = 0; k <= behavRows.length; k++) {
+      const active = k < behavRows.length && Number(behavRows[k].actual) !== 0;
+      if (active) {
+        if (run === -1) run = k;
+      } else if (run !== -1) {
+        const s = behavRows[run];
+        const e = behavRows[k - 1];
+        const userDefined: Record<string, ActualValue> = {};
+        for (const c of behavUserCols) {
+          userDefined[c] = clampActual(Number(s[c]));
+        }
+        allBouts.push({
+          id: 0,
+          start: Number(s.frame),
+          stop: Number(e.frame),
+          behav,
+          actual: clampActual(Number(s.actual)),
+          userDefined,
+        });
+        run = -1;
+      }
+    }
+  }
+
+  allBouts.sort((a, b) => a.start - b.start || a.behav.localeCompare(b.behav));
+  allBouts.forEach((b, i) => (b.id = i));
+  return allBouts;
+}
+
+// 4_preprocessed: long-form (frame, individual, bodypart, x, y, likelihood).
+// One row per (frame, individual, bodypart) coordinate triplet.
+// Returns columnar arrays indexed by absolute frame; pcutoff is applied at
+// draw time so the slider can change live without losing data.
 export async function loadKeypointsParquet(
   buffer: Uint8Array,
-  pcutoff: number,
-): Promise<{ keypointDefs: KeypointDef[]; keypointFrames: KeypointFrame[] }> {
-  const db = await getDuckDB();
-  const conn = await db.connect();
-
-  let pathId: string | null = null;
-  try {
-    pathId = `kpts_${Date.now()}.parquet`;
-    await db.registerFileBuffer(pathId, buffer);
-    const result = await conn.query(`SELECT * FROM read_parquet('${pathId}')`);
-
-    const columns = result.schema.fields.map((f: arrow.Field) => f.name);
-    const row0Frame = getRow0Frame(columns, result);
-    const kptCols = parseKptColumns(columns);
-
-    if (kptCols.length === 0) {
-      return { keypointDefs: [], keypointFrames: [] };
-    }
-
-    const seen = new Set<string>();
-    const kptKeys: { key: string; indiv: string; bpt: string }[] = [];
-    for (const { indiv, bpt } of kptCols) {
-      const key = `${indiv}_${bpt}`;
-      if (!seen.has(key)) {
-        seen.add(key);
-        kptKeys.push({ key, indiv, bpt });
-      }
-    }
-
-    const indivs = [...new Set(kptKeys.map((k) => k.indiv))];
-    const indivColors = generateColors(indivs.length);
-    const indivColorMap = new Map(
-      indivs.map((ind, i) => [ind, indivColors[i]]),
-    );
-
-    const keypointDefs: KeypointDef[] = kptKeys.map(({ key, indiv, bpt }) => ({
-      key,
-      indiv,
-      bpt,
-      color: indivColorMap.get(indiv) ?? "#ffffff",
-    }));
-
-    const numRows = result.numRows;
-    const totalFrames = row0Frame + numRows;
-    const keypointFrames: KeypointFrame[] = new Array(totalFrames);
-
-    for (const { arrowName, indiv, bpt, coord } of kptCols) {
-      const child = result.getChild(arrowName);
-      if (!child) continue;
-      const vec = child.toArray();
-      const key = `${indiv}_${bpt}`;
-      for (let i = 0; i < numRows; i++) {
-        const frameIdx = row0Frame + i;
-        let frame = keypointFrames[frameIdx];
-        if (!frame) {
-          frame = {};
-          keypointFrames[frameIdx] = frame;
-        }
-        if (!frame[key]) {
-          frame[key] = { x: 0, y: 0, likelihood: 0 };
-        }
-        frame[key][coord] = vec[i];
-      }
-    }
-
-    for (let i = row0Frame; i < totalFrames; i++) {
-      const frame = keypointFrames[i];
-      if (!frame) continue;
-      for (const kpt of kptKeys) {
-        const e = frame[kpt.key];
-        if (e && e.likelihood < pcutoff) {
-          frame[kpt.key] = { x: 0, y: 0, likelihood: 0 };
-        }
-      }
-    }
-
-    return { keypointDefs, keypointFrames };
-  } finally {
-    if (pathId) try { await db.dropFile(pathId); } catch {}
-    await conn.close();
+): Promise<KeypointData> {
+  const rows = await readRows(buffer);
+  if (rows.length === 0) {
+    return { numFrames: 0, defs: [], x: [], y: [], likelihood: [] };
   }
+
+  const defIndex = new Map<string, number>();
+  const defs: KeypointDef[] = [];
+  let maxFrame = 0;
+  for (const r of rows) {
+    const key = `${r.individual}_${r.bodypart}`;
+    if (!defIndex.has(key)) {
+      defIndex.set(key, defs.length);
+      defs.push({
+        indiv: String(r.individual),
+        bpt: String(r.bodypart),
+        color: "#ffffff",
+      });
+    }
+    const f = Number(r.frame);
+    if (f > maxFrame) maxFrame = f;
+  }
+
+  const indivs = [...new Set(defs.map((d) => d.indiv))];
+  const indivColors = generateColors(indivs.length);
+  const indivColorMap = new Map(indivs.map((ind, i) => [ind, indivColors[i]]));
+  for (const d of defs) d.color = indivColorMap.get(d.indiv) ?? "#ffffff";
+
+  const numFrames = maxFrame + 1;
+  const x = defs.map(() => new Float32Array(numFrames));
+  const y = defs.map(() => new Float32Array(numFrames));
+  const likelihood = defs.map(() => new Float32Array(numFrames));
+
+  for (const r of rows) {
+    const d = defIndex.get(`${r.individual}_${r.bodypart}`)!;
+    const f = Number(r.frame);
+    x[d][f] = Number(r.x);
+    y[d][f] = Number(r.y);
+    likelihood[d][f] = Number(r.likelihood);
+  }
+
+  return { numFrames, defs, x, y, likelihood };
 }
 
+// 5_features_extracted: wide (frame + dynamic Float64 feature columns).
+// Feature column names exclude the `frame` index column.
 export async function loadFeatureColumns(
   buffer: Uint8Array,
 ): Promise<string[]> {
-  const db = await getDuckDB();
-  const conn = await db.connect();
-
-  let pathId: string | null = null;
-  try {
-    pathId = `feat_${Date.now()}.parquet`;
-    await db.registerFileBuffer(pathId, buffer);
-    const result = await conn.query(
-      `SELECT * FROM read_parquet('${pathId}') LIMIT 1`,
-    );
-    return result.schema.fields.map((f: arrow.Field) => f.name);
-  } finally {
-    if (pathId) try { await db.dropFile(pathId); } catch {}
-    await conn.close();
-  }
+  const metadata = await parquetMetadataAsync(toArrayBuffer(buffer));
+  const schema = parquetSchema(metadata);
+  return schema.children
+    .map((c) => c.element.name)
+    .filter((name) => name !== "frame");
 }
 
 export async function loadFeatureData(
@@ -234,93 +164,66 @@ export async function loadFeatureData(
 ): Promise<Record<string, Float64Array>> {
   if (columns.length === 0) return {};
 
-  const db = await getDuckDB();
-  const conn = await db.connect();
+  const rows = await readRows(buffer, ["frame", ...columns]);
+  rows.sort((a, b) => Number(a.frame) - Number(b.frame));
 
-  let pathId: string | null = null;
-  try {
-    pathId = `featd_${Date.now()}.parquet`;
-    await db.registerFileBuffer(pathId, buffer);
-
-    const colList = columns.map((c: string) => `"${c}"`).join(", ");
-    const result = await conn.query(
-      `SELECT ${colList} FROM read_parquet('${pathId}')`,
-    );
-
-    const data: Record<string, Float64Array> = {};
-    for (const col of columns) {
-      const vec = result.getChild(col);
-      if (vec) {
-        data[col] = Float64Array.from(vec.toArray(), Number);
-      }
-    }
-
-    return data;
-  } finally {
-    if (pathId) try { await db.dropFile(pathId); } catch {}
-    await conn.close();
+  const data: Record<string, Float64Array> = {};
+  for (const col of columns) {
+    const arr = new Float64Array(rows.length);
+    for (let i = 0; i < rows.length; i++) arr[i] = Number(rows[i][col]);
+    data[col] = arr;
   }
+  return data;
 }
 
-export async function saveBehavParquet(
+// Write scored bouts back to 7_behaviour_scored long-form
+// (frame, behaviour, actual, [user_defined...]).
+export function saveBehavParquet(
   startFrame: number,
   stopFrame: number,
   bouts: Bout[],
-): Promise<Uint8Array> {
-  const db = await getDuckDB();
-  const conn = await db.connect();
+): Uint8Array {
+  const behavs = [...new Set(bouts.map((b) => b.behav))].sort();
+  const udKeys = [...new Set(bouts.flatMap((b) => Object.keys(b.userDefined)))];
 
-  let outId: string | null = null;
-  try {
-    outId = `save_out_${Date.now()}.parquet`;
+  const numFrames = stopFrame - startFrame + 1;
+  const rowCount = behavs.length * numFrames;
 
-    await conn.query(
-      `CREATE OR REPLACE TABLE data AS SELECT generate_series AS "frame" FROM generate_series(${startFrame}, ${stopFrame})`,
-    );
+  const frame = new BigInt64Array(rowCount);
+  const behaviour = new Array<string>(rowCount);
+  const actual = new BigInt64Array(rowCount);
+  const ud: Record<string, BigInt64Array> = {};
+  for (const k of udKeys) ud[k] = new BigInt64Array(rowCount);
 
-    const byBehav = new Map<string, Bout[]>();
-    const udKeys = new Map<string, Set<string>>();
-    for (const b of bouts) {
-      if (!byBehav.has(b.behav)) byBehav.set(b.behav, []);
-      byBehav.get(b.behav)!.push(b);
-      for (const k of Object.keys(b.userDefined)) {
-        if (!udKeys.has(b.behav)) udKeys.set(b.behav, new Set());
-        udKeys.get(b.behav)!.add(k);
-      }
+  const rowOf = (behavIdx: number, f: number) =>
+    behavIdx * numFrames + (f - startFrame);
+
+  for (let bi = 0; bi < behavs.length; bi++) {
+    for (let f = startFrame; f <= stopFrame; f++) {
+      const i = rowOf(bi, f);
+      frame[i] = BigInt(f);
+      behaviour[i] = behavs[bi];
     }
-
-    for (const [behav, behavBouts] of byBehav) {
-      await conn.query(
-        `ALTER TABLE data ADD COLUMN "${behav}__actual" TINYINT DEFAULT 0`,
-      );
-      for (const b of behavBouts) {
-        await conn.query(
-          `UPDATE data SET "${behav}__actual" = ${b.actual} WHERE "frame" BETWEEN ${b.start} AND ${b.stop}`,
-        );
-      }
-
-      for (const udKey of udKeys.get(behav) ?? []) {
-        await conn.query(
-          `ALTER TABLE data ADD COLUMN "${behav}__${udKey}" TINYINT DEFAULT 0`,
-        );
-        for (const b of behavBouts) {
-          const val = b.userDefined[udKey];
-          if (val !== undefined) {
-            await conn.query(
-              `UPDATE data SET "${behav}__${udKey}" = ${val} WHERE "frame" BETWEEN ${b.start} AND ${b.stop}`,
-            );
-          }
-        }
-      }
-    }
-
-    await conn.query(
-      `COPY data TO '${outId}' (FORMAT PARQUET, COMPRESSION ZSTD)`,
-    );
-
-    return await db.copyFileToBuffer(outId);
-  } finally {
-    if (outId) try { await db.dropFile(outId); } catch {}
-    await conn.close();
   }
+
+  const behavIndex = new Map(behavs.map((b, i) => [b, i]));
+  for (const b of bouts) {
+    const bi = behavIndex.get(b.behav)!;
+    for (let f = b.start; f <= b.stop; f++) {
+      if (f < startFrame || f > stopFrame) continue;
+      const i = rowOf(bi, f);
+      actual[i] = BigInt(b.actual);
+      for (const [k, v] of Object.entries(b.userDefined)) ud[k][i] = BigInt(v);
+    }
+  }
+
+  const columnData = [
+    { name: "frame", data: frame, type: "INT64" as const },
+    { name: "behaviour", data: behaviour, type: "STRING" as const },
+    { name: "actual", data: actual, type: "INT64" as const },
+    ...udKeys.map((k) => ({ name: k, data: ud[k], type: "INT64" as const })),
+  ];
+
+  const arrayBuffer = parquetWriteBuffer({ columnData, codec: "SNAPPY" });
+  return new Uint8Array(arrayBuffer);
 }

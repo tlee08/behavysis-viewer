@@ -5,7 +5,8 @@ function required(msg: string): never {
 }
 
 function asObj(v: unknown, path: string): Record<string, unknown> {
-  if (typeof v !== "object" || v === null) throw new Error(`${path} must be an object`);
+  if (typeof v !== "object" || v === null)
+    throw new Error(`${path} must be an object`);
   return v as Record<string, unknown>;
 }
 
@@ -59,10 +60,7 @@ export function parseAppConfig(raw: Record<string, unknown>): AppConfig {
     auto.formatted_vid ?? required("config missing 'auto.formatted_vid'"),
     "auto.formatted_vid",
   );
-  const user = asObj(
-    raw.user ?? required("config missing 'user'"),
-    "user",
-  );
+  const user = asObj(raw.user ?? required("config missing 'user'"), "user");
   const evaluateVid = asObj(
     user.evaluate_vid ?? required("config missing 'user.evaluate_vid'"),
     "user.evaluate_vid",

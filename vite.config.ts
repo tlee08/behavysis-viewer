@@ -10,14 +10,9 @@ export default defineConfig(async () => ({
     port: 5173,
     strictPort: true,
     host: host || false,
-    hmr: host
-      ? { protocol: "ws", host, port: 5174 }
-      : undefined,
+    hmr: host ? { protocol: "ws", host, port: 5174 } : undefined,
     watch: {
       ignored: ["**/src-tauri/**"],
     },
-  },
-  optimizeDeps: {
-    exclude: ["@duckdb/duckdb-wasm"],
   },
 }));

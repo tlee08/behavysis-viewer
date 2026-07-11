@@ -1,4 +1,4 @@
-// Shared types for parquet I/O (duckdb-wasm) and UI components.
+// Shared types for parquet I/O (hyparquet) and UI components.
 
 // 1=TRUE_POS (model bout, reviewer confirms IS behaviour)
 // -1=FALSE_POS (model bout, reviewer says NOT behaviour)
@@ -27,21 +27,20 @@ export interface Bout {
   userDefined: Record<string, ActualValue>;
 }
 
-// A single keypoint on a given frame
-export interface KeypointEntry {
-  x: number;
-  y: number;
-  likelihood: number;
-}
-
-// All keypoints for one frame, keyed by `${indiv}_${bpt}`
-export type KeypointFrame = Record<string, KeypointEntry>;
-
 export interface KeypointDef {
-  key: string; // `${indiv}_${bpt}`
   indiv: string;
   bpt: string;
   color: string; // hex
+}
+
+// Columnar keypoints indexed by absolute frame.
+// x[d][frame], y[d][frame], likelihood[d][frame] align with defs[d].
+export interface KeypointData {
+  numFrames: number;
+  defs: KeypointDef[];
+  x: Float32Array[];
+  y: Float32Array[];
+  likelihood: Float32Array[];
 }
 
 export interface AppConfig {

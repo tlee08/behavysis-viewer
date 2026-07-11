@@ -35,7 +35,10 @@ export function BoutsPanel(): React.ReactElement {
   const handleSelect = (id: number) => {
     selectBout(id);
     const bout = getBoutById(id);
-    if (bout) setCurrentFrame(Math.max(0, bout.start - Math.round(focusSizeSeconds * fps)));
+    if (bout)
+      setCurrentFrame(
+        Math.max(0, bout.start - Math.round(focusSizeSeconds * fps)),
+      );
   };
 
   return (

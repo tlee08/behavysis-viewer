@@ -16,8 +16,7 @@ export function VideoPane({ reader, metadata }: Props) {
 
   const {
     config,
-    keypointDefs,
-    keypointFrames,
+    keypoints,
     showVideo,
     showKeypoints,
     isPlaying,
@@ -56,22 +55,23 @@ export function VideoPane({ reader, metadata }: Props) {
       const ctx = kptRef.current?.getContext("2d");
       if (!ctx) return;
       ctx.clearRect(0, 0, w, h);
-      if (!showKeypoints || !keypointFrames[i]) return;
+      if (!showKeypoints || !keypoints || i >= keypoints.numFrames) return;
 
       const r = config!.keypointRadius;
+      const pcutoff = config!.keypointPcutoff;
       const sx = w / config!.widthPx;
       const sy = h / config!.heightPx;
 
-      for (const d of keypointDefs) {
-        const k = keypointFrames[i][d.key];
-        if (!k || k.likelihood < config!.keypointPcutoff) continue;
+      const { defs, x, y, likelihood } = keypoints;
+      for (let d = 0; d < defs.length; d++) {
+        if (likelihood[d][i] < pcutoff) continue;
         ctx.beginPath();
-        ctx.arc(k.x * sx, k.y * sy, r, 0, Math.PI * 2);
-        ctx.fillStyle = d.color;
+        ctx.arc(x[d][i] * sx, y[d][i] * sy, r, 0, Math.PI * 2);
+        ctx.fillStyle = defs[d].color;
         ctx.fill();
       }
     },
-    [showKeypoints, keypointFrames, keypointDefs, config, w, h],
+    [showKeypoints, keypoints, config, w, h],
   );
 
   useEffect(() => {
@@ -120,8 +120,7 @@ export function VideoPane({ reader, metadata }: Props) {
     vidSpeed,
     showVideo,
     showKeypoints,
-    keypointFrames,
-    keypointDefs,
+    keypoints,
     config,
     drawFrame,
     drawKpts,

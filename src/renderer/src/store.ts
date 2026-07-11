@@ -4,8 +4,7 @@ import type {
   AppConfig,
   Bout,
   ExperimentPaths,
-  KeypointDef,
-  KeypointFrame,
+  KeypointData,
 } from "../../shared/types";
 import type { FrameMetadata } from "./lib/frameReader";
 
@@ -15,8 +14,7 @@ interface AppState {
   videoMetadata: FrameMetadata | null;
   numFrames: number;
   bouts: Bout[];
-  keypointDefs: KeypointDef[];
-  keypointFrames: KeypointFrame[];
+  keypoints: KeypointData | null;
 
   currentFrame: number;
   isPlaying: boolean;
@@ -41,8 +39,7 @@ interface AppState {
     config: AppConfig,
     numFrames: number,
     bouts: Bout[],
-    keypointDefs: KeypointDef[],
-    keypointFrames: KeypointFrame[],
+    keypoints: KeypointData | null,
   ) => void;
 
   setCurrentFrame: (frame: number) => void;
@@ -83,8 +80,7 @@ export const useStore = create<AppState>((set, get) => ({
   videoMetadata: null,
   numFrames: 0,
   bouts: [],
-  keypointDefs: [],
-  keypointFrames: [],
+  keypoints: null,
 
   currentFrame: 0,
   isPlaying: false,
@@ -109,16 +105,14 @@ export const useStore = create<AppState>((set, get) => ({
     config,
     numFrames,
     bouts,
-    keypointDefs,
-    keypointFrames,
+    keypoints,
   ) => {
     set({
       paths,
       config,
       numFrames,
       bouts,
-      keypointDefs,
-      keypointFrames,
+      keypoints,
       currentFrame: 0,
       selectedBoutId: null,
       featureColumns: [],
