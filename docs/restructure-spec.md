@@ -195,6 +195,7 @@ Add permissions for the new plugins.
 All success criteria met.
 
 ### TypeScript
+
 ```
 $ pnpm typecheck
 $ tsc --noEmit
@@ -202,6 +203,7 @@ $ tsc --noEmit
 ```
 
 ### Build
+
 ```
 $ pnpm build
 ✓ built in 2.63s
@@ -211,6 +213,7 @@ dist/assets/index.js  1225.26 kB
 ```
 
 ### Format
+
 ```
 $ pnpm format
 prettier . --write
@@ -218,7 +221,9 @@ prettier . --write
 ```
 
 ### Lint
+
 11 pre-existing errors (not introduced by changes). All in source files with prior issues:
+
 - `frameReader.ts`: empty catch blocks, `any` types (5 errors)
 - `BoutInspector.tsx`, `FeatureGraph.tsx`, `useKeyboardShortcuts.ts`: unused `videoMetadata` (3 errors)
 - `FeaturesPanel.tsx`: unused `Text` import (1 error)
@@ -234,6 +239,7 @@ None introduced by this restructure.
 4. **ESLint config updated**: Changed from glob `**/*.{js,ts}` to scoped `src/**/*.{js,ts,tsx}` with proper ignores for `dist/`, `src-tauri/`, `node_modules/`.
 
 ### Final dependency versions
+
 - React 19.2.7, React DOM 19.2.7
 - Mantine Core 9.4.1, Mantine Hooks 9.4.1
 - Tauri CLI 2.5.0, Tauri API 2.5.0

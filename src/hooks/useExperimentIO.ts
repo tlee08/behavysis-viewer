@@ -1,8 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile, readTextFile, writeFile } from "@tauri-apps/plugin-fs";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { parseMetadata } from "../shared/behavysisContract";
-import type { Bout, KeypointData } from "../shared/types";
 import { resolveExperimentPaths } from "../lib/fileManager";
 import { FrameReader, type FrameMetadata } from "../lib/frameReader";
 import {
@@ -11,13 +9,15 @@ import {
   loadKeypointsParquet,
   saveBehavParquet,
 } from "../lib/parquetIO";
+import { parseMetadata } from "../shared/behavysisContract";
+import type { Bout, KeypointData } from "../shared/types";
 import { useStore } from "../store";
 
 export function useExperimentIO() {
   const [reader, setReader] = useState<FrameReader | null>(null);
   const [metadata, setMetadata] = useState<FrameMetadata | null>(null);
   const [status, setStatus] = useState(
-    "Open a config JSON to begin  (File > Open)",
+    "Open a config YAML to begin  (File > Open)",
   );
   const readerRef = useRef<FrameReader | null>(null);
 
