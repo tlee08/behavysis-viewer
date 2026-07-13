@@ -1,7 +1,7 @@
 import { Box, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
 import { useEffect, useRef } from "react";
-import { ACTUAL_COLORS } from "../../../shared/types";
+import { ACTUAL_COLORS } from "../shared/types";
 import { frameToTimecode, frameDurationSec } from "../lib/timecode";
 import { useStore, getBoutById } from "../store";
 

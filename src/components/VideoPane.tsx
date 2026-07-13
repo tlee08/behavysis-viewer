@@ -19,6 +19,8 @@ export function VideoPane({ reader, metadata }: Props) {
     keypoints,
     showVideo,
     showKeypoints,
+    keypointPcutoff,
+    keypointRadius,
     isPlaying,
     vidSpeed,
     currentFrame,
@@ -57,8 +59,8 @@ export function VideoPane({ reader, metadata }: Props) {
       ctx.clearRect(0, 0, w, h);
       if (!showKeypoints || !keypoints || i >= keypoints.numFrames) return;
 
-      const r = config!.keypointRadius;
-      const pcutoff = config!.keypointPcutoff;
+      const r = keypointRadius;
+      const pcutoff = keypointPcutoff;
       const sx = w / config!.widthPx;
       const sy = h / config!.heightPx;
 
@@ -71,7 +73,7 @@ export function VideoPane({ reader, metadata }: Props) {
         ctx.fill();
       }
     },
-    [showKeypoints, keypoints, config, w, h],
+    [showKeypoints, keypoints, config, w, h, keypointPcutoff, keypointRadius],
   );
 
   useEffect(() => {

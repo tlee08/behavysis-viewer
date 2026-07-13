@@ -70,12 +70,13 @@ export function PlaybackSettingsPopover() {
     setShowKeypoints,
     focusSizeSeconds,
     setFocusSizeSeconds,
-    config,
+    keypointPcutoff,
     setKeypointPcutoff,
+    keypointRadius,
     setKeypointRadius,
   } = useStore();
-  const pcutoff = config!.keypointPcutoff;
-  const radius = config!.keypointRadius;
+  const pcutoff = keypointPcutoff;
+  const radius = keypointRadius;
 
   return (
     <Popover position="bottom-end" shadow="md" width={180}>

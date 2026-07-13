@@ -5,12 +5,13 @@ import {
 } from "hyparquet";
 import { compressors } from "hyparquet-compressors";
 import { parquetWriteBuffer } from "hyparquet-writer";
+import { COLS } from "../shared/behavysisContract";
 import type {
   ActualValue,
   Bout,
   KeypointData,
   KeypointDef,
-} from "../../../shared/types";
+} from "../shared/types";
 import { generateColors } from "./colors";
 
 type Row = Record<string, unknown>;
@@ -48,19 +49,19 @@ export async function loadBehavParquet(buffer: Uint8Array): Promise<Bout[]> {
   if (rows.length === 0) return [];
 
   const userCols = Object.keys(rows[0]).filter(
-    (c) => c !== "frame" && c !== "behaviour" && c !== "actual",
+    (c) => c !== COLS.frame && c !== COLS.behaviour && c !== COLS.actual,
   );
 
   const rowsByBehav = new Map<string, Row[]>();
   for (const r of rows) {
-    const behav = String(r.behaviour);
+    const behav = String(r[COLS.behaviour]);
     if (!rowsByBehav.has(behav)) rowsByBehav.set(behav, []);
     rowsByBehav.get(behav)!.push(r);
   }
 
   const allBouts: Bout[] = [];
   for (const [behav, behavRows] of rowsByBehav) {
-    behavRows.sort((a, b) => Number(a.frame) - Number(b.frame));
+    behavRows.sort((a, b) => Number(a[COLS.frame]) - Number(b[COLS.frame]));
 
     const behavUserCols = userCols.filter((c) =>
       behavRows.some((r) => r[c] != null),
@@ -68,7 +69,8 @@ export async function loadBehavParquet(buffer: Uint8Array): Promise<Bout[]> {
 
     let run = -1;
     for (let k = 0; k <= behavRows.length; k++) {
-      const active = k < behavRows.length && Number(behavRows[k].actual) !== 0;
+      const active =
+        k < behavRows.length && Number(behavRows[k][COLS.actual]) !== 0;
       if (active) {
         if (run === -1) run = k;
       } else if (run !== -1) {
@@ -80,10 +82,10 @@ export async function loadBehavParquet(buffer: Uint8Array): Promise<Bout[]> {
         }
         allBouts.push({
           id: 0,
-          start: Number(s.frame),
-          stop: Number(e.frame),
+          start: Number(s[COLS.frame]),
+          stop: Number(e[COLS.frame]),
           behav,
-          actual: clampActual(Number(s.actual)),
+          actual: clampActual(Number(s[COLS.actual])),
           userDefined,
         });
         run = -1;
@@ -112,16 +114,16 @@ export async function loadKeypointsParquet(
   const defs: KeypointDef[] = [];
   let maxFrame = 0;
   for (const r of rows) {
-    const key = `${r.individual}_${r.bodypart}`;
+    const key = `${r[COLS.individual]}_${r[COLS.bodypart]}`;
     if (!defIndex.has(key)) {
       defIndex.set(key, defs.length);
       defs.push({
-        indiv: String(r.individual),
-        bpt: String(r.bodypart),
+        indiv: String(r[COLS.individual]),
+        bpt: String(r[COLS.bodypart]),
         color: "#ffffff",
       });
     }
-    const f = Number(r.frame);
+    const f = Number(r[COLS.frame]);
     if (f > maxFrame) maxFrame = f;
   }
 
@@ -136,11 +138,11 @@ export async function loadKeypointsParquet(
   const likelihood = defs.map(() => new Float32Array(numFrames));
 
   for (const r of rows) {
-    const d = defIndex.get(`${r.individual}_${r.bodypart}`)!;
-    const f = Number(r.frame);
-    x[d][f] = Number(r.x);
-    y[d][f] = Number(r.y);
-    likelihood[d][f] = Number(r.likelihood);
+    const d = defIndex.get(`${r[COLS.individual]}_${r[COLS.bodypart]}`)!;
+    const f = Number(r[COLS.frame]);
+    x[d][f] = Number(r[COLS.x]);
+    y[d][f] = Number(r[COLS.y]);
+    likelihood[d][f] = Number(r[COLS.likelihood]);
   }
 
   return { numFrames, defs, x, y, likelihood };
@@ -155,7 +157,7 @@ export async function loadFeatureColumns(
   const schema = parquetSchema(metadata);
   return schema.children
     .map((c) => c.element.name)
-    .filter((name) => name !== "frame");
+    .filter((name) => name !== COLS.frame);
 }
 
 export async function loadFeatureData(
@@ -164,8 +166,8 @@ export async function loadFeatureData(
 ): Promise<Record<string, Float64Array>> {
   if (columns.length === 0) return {};
 
-  const rows = await readRows(buffer, ["frame", ...columns]);
-  rows.sort((a, b) => Number(a.frame) - Number(b.frame));
+  const rows = await readRows(buffer, [COLS.frame, ...columns]);
+  rows.sort((a, b) => Number(a[COLS.frame]) - Number(b[COLS.frame]));
 
   const data: Record<string, Float64Array> = {};
   for (const col of columns) {
@@ -218,9 +220,9 @@ export function saveBehavParquet(
   }
 
   const columnData = [
-    { name: "frame", data: frame, type: "INT64" as const },
-    { name: "behaviour", data: behaviour, type: "STRING" as const },
-    { name: "actual", data: actual, type: "INT64" as const },
+    { name: COLS.frame, data: frame, type: "INT64" as const },
+    { name: COLS.behaviour, data: behaviour, type: "STRING" as const },
+    { name: COLS.actual, data: actual, type: "INT64" as const },
     ...udKeys.map((k) => ({ name: k, data: ud[k], type: "INT64" as const })),
   ];
 

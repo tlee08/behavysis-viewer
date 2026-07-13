@@ -2,7 +2,7 @@ import { Box, useMantineTheme } from "@mantine/core";
 import type Konva from "konva";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Layer, Line, Rect, Stage, Text } from "react-konva";
-import { ACTUAL_COLORS } from "../../../shared/types";
+import { ACTUAL_COLORS } from "../shared/types";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useStore } from "../store";
 

@@ -1,8 +1,9 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile, readTextFile, writeFile } from "@tauri-apps/plugin-fs";
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { Bout, KeypointData } from "../../../shared/types";
-import { parseAppConfig, resolveExperimentPaths } from "../lib/fileManager";
+import { parseMetadata } from "../shared/behavysisContract";
+import type { Bout, KeypointData } from "../shared/types";
+import { resolveExperimentPaths } from "../lib/fileManager";
 import { FrameReader, type FrameMetadata } from "../lib/frameReader";
 import {
   loadBehavParquet,
@@ -37,7 +38,7 @@ export function useExperimentIO() {
 
   const openExperiment = useCallback(async () => {
     const configPath = await open({
-      filters: [{ name: "Config file", extensions: ["json", "yaml"] }],
+      filters: [{ name: "Config file", extensions: ["yaml", "yml", "json"] }],
       multiple: false,
     });
     if (!configPath) return;
@@ -45,9 +46,9 @@ export function useExperimentIO() {
     try {
       setStatus("Loading…");
       const expPaths = resolveExperimentPaths(configPath);
-      const rawText = await readTextFile(configPath);
-      const rawConfig = JSON.parse(rawText) as Record<string, unknown>;
-      const appConfig = parseAppConfig(rawConfig);
+      const metadataText = await readTextFile(expPaths.metadataPath);
+      const rawMetadata = JSON.parse(metadataText) as Record<string, unknown>;
+      const appConfig = parseMetadata(rawMetadata);
 
       const videoBytes = await readFile(expPaths.videoPath);
       readerRef.current?.close();

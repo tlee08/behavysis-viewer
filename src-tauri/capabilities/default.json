@@ -23,6 +23,10 @@
     {
       "identifier": "fs:allow-exists",
       "allow": [{ "path": "**" }]
-    }
+    },
+    "log:default",
+    "store:default",
+    "window-state:default",
+    "single-instance:default"
   ]
 }

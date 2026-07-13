@@ -2,28 +2,21 @@
 node_modules/
 
 # Build output
-out/
 dist/
-
-# TypeScript
 *.tsbuildinfo
 
 # macOS
 .DS_Store
 
-# Python-generated files
-__pycache__/
-*.py[oc]
-build/
-wheels/
-*.egg-info
-
-# Virtual environments
-.venv
+# Logs
+*.log
 
 # Tauri
 src-tauri/target/
 src-tauri/gen/
+
+# Bundle stats
+stats.html
 
 # Other
 example_analysis

@@ -5,7 +5,7 @@ import type {
   Bout,
   ExperimentPaths,
   KeypointData,
-} from "../../shared/types";
+} from "./shared/types";
 import type { FrameMetadata } from "./lib/frameReader";
 
 interface AppState {
@@ -23,6 +23,8 @@ interface AppState {
 
   showVideo: boolean;
   showKeypoints: boolean;
+  keypointPcutoff: number;
+  keypointRadius: number;
   jumpSeconds: number;
   graphWindowSeconds: number;
 
@@ -89,6 +91,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   showVideo: true,
   showKeypoints: false,
+  keypointPcutoff: 0.8,
+  keypointRadius: 5,
   jumpSeconds: 5,
   graphWindowSeconds: 10,
 
@@ -100,13 +104,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   selectedBoutId: null,
 
-  loadExperiment: (
-    paths,
-    config,
-    numFrames,
-    bouts,
-    keypoints,
-  ) => {
+  loadExperiment: (paths, config, numFrames, bouts, keypoints) => {
     set({
       paths,
       config,
@@ -128,14 +126,8 @@ export const useStore = create<AppState>((set, get) => ({
   setFocusSizeSeconds: (focusSizeSeconds) => set({ focusSizeSeconds }),
   setShowVideo: (showVideo) => set({ showVideo }),
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
-  setKeypointPcutoff: (keypointPcutoff) =>
-    set((s) => ({
-      config: s.config ? { ...s.config, keypointPcutoff } : null,
-    })),
-  setKeypointRadius: (keypointRadius) =>
-    set((s) => ({
-      config: s.config ? { ...s.config, keypointRadius } : null,
-    })),
+  setKeypointPcutoff: (keypointPcutoff) => set({ keypointPcutoff }),
+  setKeypointRadius: (keypointRadius) => set({ keypointRadius }),
   setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
 

@@ -14,12 +14,12 @@ pnpm run package   # build + package into binary
 
 ## Usage
 
-1. **Open** — File > Open, select a `0_config/{name}.json` config file.
-   All other paths (video, parquet) are resolved automatically from the same directory tree.
+1. **Open** — File > Open, select an experiment's `0_config/{name}.yaml` config file.
+   All other paths (metadata, video, parquet) are resolved automatically from the same directory tree.
 2. **Review bouts** — click a bout in the list, or click a bar in the timeline.
 3. **Score** — Use the IS / NOT / UNSURE radio buttons, or hotkeys `1` / `2` / `3`.
 4. **Edit range** — Drag the handles on the timeline bar, or type frame/timecode in the inspector.
-5. **Save** — Writes scored parquet atomically (tmp file → verify → rename) to `7_scored_behavs/{name}.parquet`.
+5. **Save** — Writes scored parquet atomically (tmp file → verify → rename) to `7_behaviour_scored/{name}.parquet`.
 
 ### Hotkeys
 
@@ -66,33 +66,45 @@ Renderer (Chromium + React 18 + Mantine 7)
 
 ## Data format
 
-### Config JSON (`0_config/{name}.json`)
+The shared data contract with the [behavysis](https://github.com/tlee08/behavysis)
+pipeline is mirrored in a single file: `src/shared/behavysisContract.ts`
+(folder layout, column names, the `actual` enum, and the metadata-file shape).
+Update that file when the pipeline contract changes.
 
-Pipeline config with `auto.formatted_vid.*` (fps, dimensions, frame count) and `user.evaluate_vid.*` (pcutoff, radius).
+### Config (`0_config/{name}.yaml`)
 
-### Behaviour parquet (`6_predicted_behavs/` or `7_scored_behavs/`)
+Selected by the user on Open. Used only to locate the experiment root; the video
+parameters are read from the metadata file below.
 
-Uses 2-level column names:
+### Metadata JSON (`0_metadata/{name}.json`)
 
-- New format (written by viewer): `behav__actual`, `behav__subbehav`
-- Old format (from pipeline): `('behav', 'actual')`, `('behav', 'pred')`
+Pipeline `ExperimentMetadata`. Supplies `formatted_video.{fps, width_px, height_px, total_frames}`,
+`start_frame`, and `stop_frame`.
+
+### Behaviour parquet (`6_behaviour_predicted/` or `7_behaviour_scored/`)
+
+Long-form, one row per `(frame, behaviour)`: columns `frame`, `behaviour`,
+`actual`, plus dynamic user-defined sub-behaviour columns. A bout is a
+contiguous run of non-zero `actual` frames within a behaviour.
 
 Actual values: `1`=TRUE_POS, `-1`=FALSE_POS, `0`=TRUE_NEG, `-2`=UNSURE
 
 ### Keypoints parquet (`4_preprocessed/`)
 
-DLC 4-level tuple column names: `('DLC_scorer', 'mouse1', 'Nose', 'x')`
+Long-form, one row per `(frame, individual, bodypart)`: columns `frame`,
+`individual`, `bodypart`, `x`, `y`, `likelihood`.
 
 ### Features parquet (`5_features_extracted/`)
 
-Flat per-frame feature columns (centroid distance, movement, angles, etc). Not yet displayed — coming in a future update.
+Wide: `frame` + dynamic Float64 feature columns.
 
 ## Project structure
 
 ```
 src/
   shared/
-    types.ts              Shared types (Bout, ActualValue, KeypointDef, etc.)
+    behavysisContract.ts  Mirror of the behavysis pipeline contract (single source of truth)
+    types.ts              Viewer types (Bout, KeypointDef, AppConfig, etc.)
   main/
     index.ts              Electron main — window creation
     ipc.ts                IPC handlers

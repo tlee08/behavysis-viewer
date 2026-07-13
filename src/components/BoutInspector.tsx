@@ -9,8 +9,8 @@ import {
   Text,
   TextInput,
 } from "@mantine/core";
-import type { ActualValue } from "../../../shared/types";
-import { ACTUAL_COLORS } from "../../../shared/types";
+import type { ActualValue } from "../shared/types";
+import { ACTUAL_COLORS } from "../shared/types";
 import { frameToTimecodeMs, timecodeToFrame } from "../lib/timecode";
 import { getBoutById, useStore } from "../store";
 
