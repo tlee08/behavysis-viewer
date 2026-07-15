@@ -38,7 +38,7 @@ export function useExperimentIO() {
 
   const openExperiment = useCallback(async () => {
     const configPath = await open({
-      filters: [{ name: "Config file", extensions: ["yaml", "yml", "json"] }],
+      filters: [{ name: "Config file", extensions: ["yaml"] }],
       multiple: false,
     });
     if (!configPath) return;
