@@ -1,4 +1,4 @@
-import { Box, Tabs } from "@mantine/core";
+import { Box, Tabs, Text } from "@mantine/core";
 import { Group, Panel, Separator } from "react-resizable-panels";
 import { BoutInspector } from "./components/BoutInspector";
 import { BoutsPanel } from "./components/BoutsPanel";
@@ -10,9 +10,11 @@ import { PlaybackBar } from "./components/playback/PlaybackBar";
 import { VideoPane } from "./components/VideoPane";
 import { useExperimentIO } from "./hooks/useExperimentIO";
 import { useKeyboardShortcuts } from "./hooks/useKeyboardShortcuts";
+import { useStore } from "./store";
 
 export default function App(): React.ReactElement {
   const { reader, metadata, status, open, save } = useExperimentIO();
+  const config = useStore((s) => s.config);
   useKeyboardShortcuts();
 
   return (
@@ -23,6 +25,18 @@ export default function App(): React.ReactElement {
     >
       <MenuBar onOpen={open} onSave={save} status={status} />
 
+      {!config ? (
+        <Box
+          style={{
+            flex: 1,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+          }}
+        >
+          <Text c="dimmed">{status}</Text>
+        </Box>
+      ) : (
       <Group orientation="horizontal" style={{ flex: 1, overflow: "hidden" }}>
         <Panel defaultSize={60} minSize={20}>
           <Box
@@ -93,6 +107,7 @@ export default function App(): React.ReactElement {
           </Tabs>
         </Panel>
       </Group>
+      )}
     </Box>
   );
 }
