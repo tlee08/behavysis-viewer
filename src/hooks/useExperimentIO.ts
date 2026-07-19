@@ -1,5 +1,6 @@
 import { open } from "@tauri-apps/plugin-dialog";
 import { readFile, readTextFile, writeFile } from "@tauri-apps/plugin-fs";
+import { load as yamlLoad } from "js-yaml";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { resolveExperimentPaths } from "../lib/fileManager";
 import { FrameReader, type FrameMetadata } from "../lib/frameReader";
@@ -47,7 +48,7 @@ export function useExperimentIO() {
       setStatus("Loading…");
       const expPaths = resolveExperimentPaths(configPath);
       const metadataText = await readTextFile(expPaths.metadataPath);
-      const rawMetadata = JSON.parse(metadataText) as Record<string, unknown>;
+      const rawMetadata = yamlLoad(metadataText) as Record<string, unknown>;
       const appConfig = parseMetadata(rawMetadata);
 
       const videoBytes = await readFile(expPaths.videoPath);

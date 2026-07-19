@@ -46,6 +46,7 @@ const WINDOW_OPTS = [
 ];
 
 const FOCUS_OPTS = [
+  { value: "0", label: "0s" },
   { value: "0.5", label: "0.5s" },
   { value: "1", label: "1s" },
   { value: "1.5", label: "1.5s" },

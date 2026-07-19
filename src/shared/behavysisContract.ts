@@ -62,7 +62,7 @@ export const ACTUAL_COLORS: Record<ActualValue, string> = {
 };
 
 // ─── Experiment metadata (models/experiment_metadata.py) ────────────────────
-// Written by the pipeline as `0_metadata/{name}.json` via model_dump_json.
+// Written by the pipeline as `0_metadata/{name}.yaml` via model_dump_json.
 // Video params (fps, dimensions, frame range) come from here, NOT the config.
 export interface ExperimentMetadataFile {
   fps: number;
@@ -86,7 +86,7 @@ function getNum(obj: Record<string, unknown>, key: string): number {
   return v;
 }
 
-// Parse `0_metadata/{name}.json` (ExperimentMetadata) into viewer video params.
+// Parse `0_metadata/{name}.yaml` (ExperimentMetadata) into viewer video params.
 export function parseMetadata(
   raw: Record<string, unknown>,
 ): ExperimentMetadataFile {

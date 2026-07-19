@@ -34,7 +34,7 @@ export function resolveExperimentPaths(configPath: string): ExperimentPaths {
   return {
     configPath,
     name,
-    metadataPath: joinFn(root, STAGE_DIRS.metadata, `${name}.json`),
+    metadataPath: joinFn(root, STAGE_DIRS.metadata, `${name}.yaml`),
     videoPath: joinFn(root, STAGE_DIRS.formattedVideo, `${name}.mp4`),
     keypointsPath: joinFn(root, STAGE_DIRS.preprocessed, `${name}.parquet`),
     featuresPath: joinFn(root, STAGE_DIRS.featuresExtracted, `${name}.parquet`),
