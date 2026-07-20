@@ -37,76 +37,76 @@ export default function App(): React.ReactElement {
           <Text c="dimmed">{status}</Text>
         </Box>
       ) : (
-      <Group orientation="horizontal" style={{ flex: 1, overflow: "hidden" }}>
-        <Panel defaultSize={60} minSize={20}>
-          <Box
-            style={{
-              display: "flex",
-              flexDirection: "column",
-              height: "100%",
-            }}
-          >
-            <Box style={{ flexShrink: 0 }}>
-              <VideoPane reader={reader} metadata={metadata} />
+        <Group orientation="horizontal" style={{ flex: 1, overflow: "hidden" }}>
+          <Panel defaultSize={60} minSize={20}>
+            <Box
+              style={{
+                display: "flex",
+                flexDirection: "column",
+                height: "100%",
+              }}
+            >
+              <Box style={{ flexShrink: 0 }}>
+                <VideoPane reader={reader} metadata={metadata} />
+              </Box>
+              <PlaybackBar />
+              <Box style={{ flex: 1, overflow: "auto" }}>
+                <BoutTimeline height={120} />
+              </Box>
+              <FeatureGraph height={90} />
             </Box>
-            <PlaybackBar />
-            <Box style={{ flex: 1, overflow: "auto" }}>
-              <BoutTimeline height={120} />
-            </Box>
-            <FeatureGraph height={90} />
-          </Box>
-        </Panel>
-        <Separator
-          style={{ width: 4, background: "var(--mantine-color-dark-5)" }}
-        />
-        <Panel defaultSize={40} minSize={20}>
-          <Tabs
-            defaultValue="bouts"
-            style={{
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-            }}
-            styles={{
-              root: { height: "100%" },
-              panel: { flex: 1, overflow: "hidden" },
-            }}
-          >
-            <Tabs.List>
-              <Tabs.Tab value="bouts">Behaviour Bouts</Tabs.Tab>
-              <Tabs.Tab value="features">Features</Tabs.Tab>
-            </Tabs.List>
+          </Panel>
+          <Separator
+            style={{ width: 4, background: "var(--mantine-color-dark-5)" }}
+          />
+          <Panel defaultSize={40} minSize={20}>
+            <Tabs
+              defaultValue="bouts"
+              style={{
+                height: "100%",
+                display: "flex",
+                flexDirection: "column",
+              }}
+              styles={{
+                root: { height: "100%" },
+                panel: { flex: 1, overflow: "hidden" },
+              }}
+            >
+              <Tabs.List>
+                <Tabs.Tab value="bouts">Behaviour Bouts</Tabs.Tab>
+                <Tabs.Tab value="features">Features</Tabs.Tab>
+              </Tabs.List>
 
-            <Tabs.Panel value="bouts">
-              <Box
-                style={{
-                  display: "flex",
-                  flexDirection: "column",
-                  height: "100%",
-                }}
-              >
-                <Box style={{ flex: 1, overflow: "hidden" }}>
-                  <BoutsPanel />
-                </Box>
+              <Tabs.Panel value="bouts">
                 <Box
-                  bg="dark.7"
                   style={{
-                    flexShrink: 0,
-                    minHeight: 140,
-                    borderTop: "1px solid var(--mantine-color-dark-6)",
+                    display: "flex",
+                    flexDirection: "column",
+                    height: "100%",
                   }}
                 >
-                  <BoutInspector />
+                  <Box style={{ flex: 1, overflow: "hidden" }}>
+                    <BoutsPanel />
+                  </Box>
+                  <Box
+                    bg="dark.7"
+                    style={{
+                      flexShrink: 0,
+                      minHeight: 140,
+                      borderTop: "1px solid var(--mantine-color-dark-6)",
+                    }}
+                  >
+                    <BoutInspector />
+                  </Box>
                 </Box>
-              </Box>
-            </Tabs.Panel>
+              </Tabs.Panel>
 
-            <Tabs.Panel value="features" style={{ height: "100%" }}>
-              <FeaturesPanel />
-            </Tabs.Panel>
-          </Tabs>
-        </Panel>
-      </Group>
+              <Tabs.Panel value="features" style={{ height: "100%" }}>
+                <FeaturesPanel />
+              </Tabs.Panel>
+            </Tabs>
+          </Panel>
+        </Group>
       )}
     </Box>
   );
