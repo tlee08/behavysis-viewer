@@ -12,6 +12,13 @@ pnpm run typecheck # verify type correctness
 pnpm run package   # build + package into binary
 ```
 
+On Linux, must also install GStreamer H.264 plugins for webkit2gtk
+
+```bash
+sudo apt update
+sudo apt install gstreamer1.0-libav
+```
+
 ## Usage
 
 1. **Open** — File > Open, select an experiment's `0_config/{name}.yaml` config file.
