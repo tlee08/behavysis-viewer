@@ -45,6 +45,7 @@ async function readRows(
 // columns, all Int64). Built by make_scored_schema(classify_behaviour).
 // A bout is a contiguous run of non-zero values within a behaviour column.
 // Sub-behaviour values for each bout are taken from the first frame of the run.
+// Columns not listed in classifyBehaviour are treated as standalone behaviours.
 export async function loadBehavParquet(
   buffer: Uint8Array,
   classifyBehaviour: Record<string, string[]>,
@@ -54,11 +55,18 @@ export async function loadBehavParquet(
 
   rows.sort((a, b) => Number(a[COLS.frame]) - Number(b[COLS.frame]));
 
+  const knownCols = new Set<string>([COLS.frame]);
+  for (const [behav, subs] of Object.entries(classifyBehaviour)) {
+    knownCols.add(behav);
+    for (const sub of subs) knownCols.add(sub);
+  }
+
   const allBouts: Bout[] = [];
-  for (const [behav, subBehavs] of Object.entries(classifyBehaviour)) {
+
+  const scanColumn = (col: string, subBehavs: string[]) => {
     let run = -1;
     for (let k = 0; k <= rows.length; k++) {
-      const active = k < rows.length && Number(rows[k][behav]) !== 0;
+      const active = k < rows.length && Number(rows[k][col]) !== 0;
       if (active) {
         if (run === -1) run = k;
       } else if (run !== -1) {
@@ -72,11 +80,23 @@ export async function loadBehavParquet(
           id: 0,
           start: Number(s[COLS.frame]),
           stop: Number(e[COLS.frame]),
-          behav,
-          actual: clampActual(Number(s[behav])),
+          behav: col,
+          actual: clampActual(Number(s[col])),
           userDefined,
         });
         run = -1;
+      }
+    }
+  };
+
+  for (const [behav, subBehavs] of Object.entries(classifyBehaviour)) {
+    scanColumn(behav, subBehavs);
+  }
+
+  if (rows.length > 0) {
+    for (const col of Object.keys(rows[0])) {
+      if (!knownCols.has(col)) {
+        scanColumn(col, []);
       }
     }
   }
@@ -168,6 +188,7 @@ export async function loadFeatureData(
 
 // Write scored bouts back to 7_behaviour_scored wide format
 // (frame + behaviour columns + sub-behaviour columns, all Int64).
+// Columns present in bouts but not in classifyBehaviour are included as-is.
 export function saveBehavParquet(
   startFrame: number,
   stopFrame: number,
@@ -175,8 +196,20 @@ export function saveBehavParquet(
   classifyBehaviour: Record<string, string[]>,
 ): Uint8Array {
   const numFrames = stopFrame - startFrame + 1;
-  const behavCols = Object.keys(classifyBehaviour);
-  const subCols = Object.values(classifyBehaviour).flat();
+  const behavCols = new Set(Object.keys(classifyBehaviour));
+  const subCols = new Set(Object.values(classifyBehaviour).flat());
+
+  for (const b of bouts) {
+    if (!behavCols.has(b.behav) && !subCols.has(b.behav)) {
+      behavCols.add(b.behav);
+    }
+    for (const sub of Object.keys(b.userDefined)) {
+      if (!behavCols.has(sub) && !subCols.has(sub)) {
+        subCols.add(sub);
+      }
+    }
+  }
+
   const allCols = [...behavCols, ...subCols];
 
   const frame = new BigInt64Array(numFrames);

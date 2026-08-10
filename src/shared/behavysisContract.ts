@@ -123,13 +123,17 @@ export function parseExperimentConfig(
 ): ExperimentConfigFile {
   const classifyBehaviour: Record<string, string[]> = {};
   const rawClassify = raw.classify_behaviour;
-  if (rawClassify !== undefined) {
+  if (rawClassify != null) {
     const cb = asObj(rawClassify, "classify_behaviour");
     for (const [behav, ref] of Object.entries(cb)) {
+      if (ref == null) {
+        classifyBehaviour[behav] = [];
+        continue;
+      }
       const r = asObj(ref, `classify_behaviour.${behav}`);
       const subs = r.sub_behaviour;
       classifyBehaviour[behav] =
-        subs !== undefined
+        subs != null
           ? asStrList(subs, `classify_behaviour.${behav}.sub_behaviour`)
           : [];
     }
@@ -137,7 +141,7 @@ export function parseExperimentConfig(
 
   const featureSets: string[] = [];
   const rawFeatures = raw.extract_features;
-  if (rawFeatures !== undefined) {
+  if (rawFeatures != null) {
     const ef = asObj(rawFeatures, "extract_features");
     featureSets.push(...Object.keys(ef).sort());
   }
