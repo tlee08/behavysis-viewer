@@ -102,10 +102,9 @@ export function parseMetadata(
 }
 
 // ─── Experiment config (models/experiment_config.py) ─────────────────────────
-// Parse `0_config/{name}.yaml` to extract classify_behaviour and feature sets.
+// Parse `0_config/{name}.yaml` to extract classify_behaviour.
 export interface ExperimentConfigFile {
   classifyBehaviour: Record<string, string[]>;
-  featureSets: string[];
 }
 
 function asStrList(v: unknown, path: string): string[] {
@@ -139,12 +138,5 @@ export function parseExperimentConfig(
     }
   }
 
-  const featureSets: string[] = [];
-  const rawFeatures = raw.extract_features;
-  if (rawFeatures != null) {
-    const ef = asObj(rawFeatures, "extract_features");
-    featureSets.push(...Object.keys(ef).sort());
-  }
-
-  return { classifyBehaviour, featureSets };
+  return { classifyBehaviour };
 }

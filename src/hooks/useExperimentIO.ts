@@ -1,5 +1,5 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { readFile, readTextFile, writeFile } from "@tauri-apps/plugin-fs";
+import { readDir, readFile, readTextFile, writeFile } from "@tauri-apps/plugin-fs";
 import { load as yamlLoad } from "js-yaml";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { resolveExperimentPaths } from "../lib/fileManager";
@@ -60,6 +60,19 @@ export function useExperimentIO() {
       const appConfig = parseMetadata(rawMetadata);
       const expConfig = parseExperimentConfig(rawConfig);
 
+      const featureSets: string[] = [];
+      try {
+        const entries = await readDir(expPaths.featuresDir);
+        featureSets.push(
+          ...entries
+            .filter((e) => e.isDirectory)
+            .map((e) => e.name)
+            .sort(),
+        );
+      } catch {
+        // features dir doesn't exist yet — leave empty
+      }
+
       const videoBytes = await readFile(expPaths.videoPath);
       readerRef.current?.close();
       const arrBuf = new Uint8Array(videoBytes).buffer;
@@ -95,10 +108,10 @@ export function useExperimentIO() {
         parsedBouts,
         keypoints,
         expConfig.classifyBehaviour,
-        expConfig.featureSets,
+        featureSets,
       );
 
-      setFeatureSets(expConfig.featureSets);
+      setFeatureSets(featureSets);
       setStatus(`Opened: ${expPaths.name}`);
     } catch (err) {
       setStatus(`Error: ${String(err)}`);

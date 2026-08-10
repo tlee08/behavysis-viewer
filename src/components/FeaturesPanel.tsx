@@ -19,7 +19,6 @@ export function FeaturesPanel() {
     featureSets,
     activeFeatureSet,
     setActiveFeatureSet,
-    classifyBehaviour,
     setFeatureColumns,
   } = useStore();
 
@@ -54,7 +53,6 @@ export function FeaturesPanel() {
   }, [
     activeFeatureSet,
     paths,
-    classifyBehaviour,
     setFeatureColumns,
     setSelectedFeatureColumns,
     setFeatureData,
