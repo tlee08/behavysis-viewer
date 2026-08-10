@@ -36,6 +36,9 @@ interface AppState {
   featureData: Record<string, Float64Array>;
   featureYGlobal: boolean;
   featureScaleMode: "raw" | "minmax" | "zscore";
+  featureSets: string[];
+  activeFeatureSet: string | null;
+  classifyBehaviour: Record<string, string[]>;
 
   selectedBoutId: number | null;
 
@@ -45,6 +48,8 @@ interface AppState {
     numFrames: number,
     bouts: Bout[],
     keypoints: KeypointData | null,
+    classifyBehaviour: Record<string, string[]>,
+    featureSets: string[],
   ) => void;
 
   setCurrentFrame: (frame: number) => void;
@@ -66,6 +71,9 @@ interface AppState {
   setFeatureData: (data: Record<string, Float64Array>) => void;
   setFeatureYGlobal: (v: boolean) => void;
   setFeatureScaleMode: (mode: "raw" | "minmax" | "zscore") => void;
+  setFeatureSets: (sets: string[]) => void;
+  setActiveFeatureSet: (name: string | null) => void;
+  setClassifyBehaviour: (cb: Record<string, string[]>) => void;
 
   selectBout: (id: number | null) => void;
   interimBoutEdit: {
@@ -108,21 +116,27 @@ export const useStore = create<AppState>((set, get) => ({
   featureData: {},
   featureYGlobal: false,
   featureScaleMode: "minmax",
+  featureSets: [],
+  activeFeatureSet: null,
+  classifyBehaviour: {},
 
   selectedBoutId: null,
 
-  loadExperiment: (paths, config, numFrames, bouts, keypoints) => {
+  loadExperiment: (paths, config, numFrames, bouts, keypoints, classifyBehaviour, featureSets) => {
     set({
       paths,
       config,
       numFrames,
       bouts,
       keypoints,
+      classifyBehaviour,
+      featureSets,
       currentFrame: 0,
       selectedBoutId: null,
       featureColumns: [],
       selectedFeatureColumns: [],
       featureData: {},
+      activeFeatureSet: null,
     });
   },
 
@@ -146,6 +160,9 @@ export const useStore = create<AppState>((set, get) => ({
   setFeatureData: (featureData) => set({ featureData }),
   setFeatureYGlobal: (featureYGlobal) => set({ featureYGlobal }),
   setFeatureScaleMode: (featureScaleMode) => set({ featureScaleMode }),
+  setFeatureSets: (featureSets) => set({ featureSets }),
+  setActiveFeatureSet: (activeFeatureSet) => set({ activeFeatureSet }),
+  setClassifyBehaviour: (classifyBehaviour) => set({ classifyBehaviour }),
 
   selectBout: (selectedBoutId) => {
     if (selectedBoutId === null) {

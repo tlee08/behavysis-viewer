@@ -6,11 +6,13 @@ import { resolveExperimentPaths } from "../lib/fileManager";
 import { FrameReader, type FrameMetadata } from "../lib/frameReader";
 import {
   loadBehavParquet,
-  loadFeatureColumns,
   loadKeypointsParquet,
   saveBehavParquet,
 } from "../lib/parquetIO";
-import { parseMetadata } from "../shared/behavysisContract";
+import {
+  parseExperimentConfig,
+  parseMetadata,
+} from "../shared/behavysisContract";
 import type { Bout, KeypointData } from "../shared/types";
 import { useStore } from "../store";
 
@@ -26,9 +28,10 @@ export function useExperimentIO() {
     paths,
     bouts,
     config,
+    classifyBehaviour,
     loadExperiment,
     setVideoMetadata,
-    setFeatureColumns,
+    setFeatureSets,
   } = useStore();
 
   useEffect(() => {
@@ -47,9 +50,15 @@ export function useExperimentIO() {
     try {
       setStatus("Loading…");
       const expPaths = resolveExperimentPaths(configPath);
-      const metadataText = await readTextFile(expPaths.metadataPath);
+
+      const [metadataText, configText] = await Promise.all([
+        readTextFile(expPaths.metadataPath),
+        readTextFile(expPaths.configPath),
+      ]);
       const rawMetadata = yamlLoad(metadataText) as Record<string, unknown>;
+      const rawConfig = yamlLoad(configText) as Record<string, unknown>;
       const appConfig = parseMetadata(rawMetadata);
+      const expConfig = parseExperimentConfig(rawConfig);
 
       const videoBytes = await readFile(expPaths.videoPath);
       readerRef.current?.close();
@@ -63,7 +72,10 @@ export function useExperimentIO() {
       let parsedBouts: Bout[] = [];
       try {
         const behavBytes = await readFile(expPaths.behavsPath);
-        parsedBouts = await loadBehavParquet(new Uint8Array(behavBytes));
+        parsedBouts = await loadBehavParquet(
+          new Uint8Array(behavBytes),
+          expConfig.classifyBehaviour,
+        );
       } catch (err) {
         console.warn("No behaviour bouts file:", String(err));
       }
@@ -76,28 +88,22 @@ export function useExperimentIO() {
         console.warn("No keypoints file:", String(err));
       }
 
-      let featureCols: string[] = [];
-      try {
-        const featBytes = await readFile(expPaths.featuresPath);
-        featureCols = await loadFeatureColumns(new Uint8Array(featBytes));
-      } catch (err) {
-        console.warn("No features file:", String(err));
-      }
-
       loadExperiment(
         expPaths,
         appConfig,
         newReader.metadata.totalFrames,
         parsedBouts,
         keypoints,
+        expConfig.classifyBehaviour,
+        expConfig.featureSets,
       );
 
-      setFeatureColumns(featureCols);
+      setFeatureSets(expConfig.featureSets);
       setStatus(`Opened: ${expPaths.name}`);
     } catch (err) {
       setStatus(`Error: ${String(err)}`);
     }
-  }, [loadExperiment, setVideoMetadata, setFeatureColumns]);
+  }, [loadExperiment, setVideoMetadata, setFeatureSets]);
 
   const save = useCallback(async () => {
     if (!paths || !config) {
@@ -109,13 +115,14 @@ export function useExperimentIO() {
         config.startFrame,
         config.stopFrame,
         bouts,
+        classifyBehaviour,
       );
       await writeFile(paths.behavsPath, updatedBuffer);
       setStatus(`Saved → ${paths.behavsPath}`);
     } catch (err) {
       setStatus(`Save failed: ${String(err)}`);
     }
-  }, [paths, config, bouts]);
+  }, [paths, config, bouts, classifyBehaviour]);
 
   return { reader, metadata, status, open: openExperiment, save };
 }

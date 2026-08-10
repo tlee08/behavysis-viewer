@@ -52,6 +52,6 @@ export interface ExperimentPaths {
   metadataPath: string;
   behavsPath: string;
   keypointsPath: string;
-  featuresPath: string;
+  featuresDir: string;
   name: string;
 }

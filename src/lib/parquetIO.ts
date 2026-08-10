@@ -41,51 +41,39 @@ async function readRows(
   });
 }
 
-// 7_behaviour_scored: long-form (frame, behaviour, actual, [user_defined...]).
-// One row per (frame, behaviour). A bout is a contiguous run of non-zero
-// `actual` frames within a behaviour.
-export async function loadBehavParquet(buffer: Uint8Array): Promise<Bout[]> {
+// 7_behaviour_scored: wide (frame + behaviour-name columns + sub-behaviour
+// columns, all Int64). Built by make_scored_schema(classify_behaviour).
+// A bout is a contiguous run of non-zero values within a behaviour column.
+// Sub-behaviour values for each bout are taken from the first frame of the run.
+export async function loadBehavParquet(
+  buffer: Uint8Array,
+  classifyBehaviour: Record<string, string[]>,
+): Promise<Bout[]> {
   const rows = await readRows(buffer);
   if (rows.length === 0) return [];
 
-  const userCols = Object.keys(rows[0]).filter(
-    (c) => c !== COLS.frame && c !== COLS.behaviour && c !== COLS.actual,
-  );
-
-  const rowsByBehav = new Map<string, Row[]>();
-  for (const r of rows) {
-    const behav = String(r[COLS.behaviour]);
-    if (!rowsByBehav.has(behav)) rowsByBehav.set(behav, []);
-    rowsByBehav.get(behav)!.push(r);
-  }
+  rows.sort((a, b) => Number(a[COLS.frame]) - Number(b[COLS.frame]));
 
   const allBouts: Bout[] = [];
-  for (const [behav, behavRows] of rowsByBehav) {
-    behavRows.sort((a, b) => Number(a[COLS.frame]) - Number(b[COLS.frame]));
-
-    const behavUserCols = userCols.filter((c) =>
-      behavRows.some((r) => r[c] != null),
-    );
-
+  for (const [behav, subBehavs] of Object.entries(classifyBehaviour)) {
     let run = -1;
-    for (let k = 0; k <= behavRows.length; k++) {
-      const active =
-        k < behavRows.length && Number(behavRows[k][COLS.actual]) !== 0;
+    for (let k = 0; k <= rows.length; k++) {
+      const active = k < rows.length && Number(rows[k][behav]) !== 0;
       if (active) {
         if (run === -1) run = k;
       } else if (run !== -1) {
-        const s = behavRows[run];
-        const e = behavRows[k - 1];
+        const s = rows[run];
+        const e = rows[k - 1];
         const userDefined: Record<string, ActualValue> = {};
-        for (const c of behavUserCols) {
-          userDefined[c] = clampActual(Number(s[c]));
+        for (const sub of subBehavs) {
+          userDefined[sub] = clampActual(Number(s[sub]));
         }
         allBouts.push({
           id: 0,
           start: Number(s[COLS.frame]),
           stop: Number(e[COLS.frame]),
           behav,
-          actual: clampActual(Number(s[COLS.actual])),
+          actual: clampActual(Number(s[behav])),
           userDefined,
         });
         run = -1;
@@ -178,52 +166,53 @@ export async function loadFeatureData(
   return data;
 }
 
-// Write scored bouts back to 7_behaviour_scored long-form
-// (frame, behaviour, actual, [user_defined...]).
+// Write scored bouts back to 7_behaviour_scored wide format
+// (frame + behaviour columns + sub-behaviour columns, all Int64).
 export function saveBehavParquet(
   startFrame: number,
   stopFrame: number,
   bouts: Bout[],
+  classifyBehaviour: Record<string, string[]>,
 ): Uint8Array {
-  const behavs = [...new Set(bouts.map((b) => b.behav))].sort();
-  const udKeys = [...new Set(bouts.flatMap((b) => Object.keys(b.userDefined)))];
-
   const numFrames = stopFrame - startFrame + 1;
-  const rowCount = behavs.length * numFrames;
+  const behavCols = Object.keys(classifyBehaviour);
+  const subCols = Object.values(classifyBehaviour).flat();
+  const allCols = [...behavCols, ...subCols];
 
-  const frame = new BigInt64Array(rowCount);
-  const behaviour = new Array<string>(rowCount);
-  const actual = new BigInt64Array(rowCount);
-  const ud: Record<string, BigInt64Array> = {};
-  for (const k of udKeys) ud[k] = new BigInt64Array(rowCount);
-
-  const rowOf = (behavIdx: number, f: number) =>
-    behavIdx * numFrames + (f - startFrame);
-
-  for (let bi = 0; bi < behavs.length; bi++) {
-    for (let f = startFrame; f <= stopFrame; f++) {
-      const i = rowOf(bi, f);
-      frame[i] = BigInt(f);
-      behaviour[i] = behavs[bi];
-    }
+  const frame = new BigInt64Array(numFrames);
+  for (let i = 0; i < numFrames; i++) {
+    frame[i] = BigInt(startFrame + i);
   }
 
-  const behavIndex = new Map(behavs.map((b, i) => [b, i]));
+  const dataArrays: Record<string, BigInt64Array> = {};
+  for (const col of allCols) {
+    dataArrays[col] = new BigInt64Array(numFrames);
+  }
+
   for (const b of bouts) {
-    const bi = behavIndex.get(b.behav)!;
+    const arr = dataArrays[b.behav];
+    if (!arr) continue;
     for (let f = b.start; f <= b.stop; f++) {
       if (f < startFrame || f > stopFrame) continue;
-      const i = rowOf(bi, f);
-      actual[i] = BigInt(b.actual);
-      for (const [k, v] of Object.entries(b.userDefined)) ud[k][i] = BigInt(v);
+      arr[f - startFrame] = BigInt(b.actual);
+    }
+    for (const [sub, val] of Object.entries(b.userDefined)) {
+      const subArr = dataArrays[sub];
+      if (!subArr) continue;
+      for (let f = b.start; f <= b.stop; f++) {
+        if (f < startFrame || f > stopFrame) continue;
+        subArr[f - startFrame] = BigInt(val);
+      }
     }
   }
 
   const columnData = [
     { name: COLS.frame, data: frame, type: "INT64" as const },
-    { name: COLS.behaviour, data: behaviour, type: "STRING" as const },
-    { name: COLS.actual, data: actual, type: "INT64" as const },
-    ...udKeys.map((k) => ({ name: k, data: ud[k], type: "INT64" as const })),
+    ...allCols.map((col) => ({
+      name: col,
+      data: dataArrays[col],
+      type: "INT64" as const,
+    })),
   ];
 
   const arrayBuffer = parquetWriteBuffer({ columnData, codec: "SNAPPY" });

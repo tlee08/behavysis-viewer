@@ -3,14 +3,15 @@
 //
 // This is the SINGLE source of truth in behavysis-viewer for anything shared
 // with the behavysis Python pipeline: folder layout, DataFrame column names,
-// the `actual` scoring enum, and the metadata-file shape.
+// the `actual` scoring enum, config-file shape, and metadata-file shape.
 //
 // The pipeline and the viewer are separate git repos installed independently,
 // so there is no runtime/relative coupling. When the pipeline contract changes,
 // update THIS FILE to match. Mirrored from behavysis:
-//   - constants/pipeline.py      → STAGE_DIRS
-//   - constants/data_names.py    → COLS, ActualValue enum
-//   - schemas/schemas.py         → COLS (KEYPOINTS_SCHEMA, BEHAVIOUR_SCORED_BASE)
+//   - constants/pipeline.py       → STAGE_DIRS
+//   - constants/data_names.py     → COLS, ActualValue enum
+//   - schemas/schemas.py          → COLS (KEYPOINTS_SCHEMA, make_scored_schema)
+//   - models/experiment_config.py → ExperimentConfig / ClassifierRef
 //   - models/experiment_metadata.py → ExperimentMetadata / parseMetadata
 // ═══════════════════════════════════════════════════════════════════════════
 
@@ -30,7 +31,8 @@ export const STAGE_DIRS = {
 
 // ─── DataFrame column names (schemas/schemas.py, constants/data_names.py) ────
 // KEYPOINTS_SCHEMA: one row per (frame, individual, bodypart).
-// BEHAVIOUR_SCORED_BASE: (frame, behaviour, actual) + dynamic user-defined cols.
+// BEHAVIOUR_SCORED: wide — frame + behaviour-name columns + sub-behaviour columns
+// (all Int64), built by make_scored_schema(classify_behaviour).
 export const COLS = {
   frame: "frame",
   individual: "individual",
@@ -38,8 +40,6 @@ export const COLS = {
   x: "x",
   y: "y",
   likelihood: "likelihood",
-  behaviour: "behaviour",
-  actual: "actual",
 } as const;
 
 // ─── `actual` scoring enum (constants/data_names.py) ────────────────────────
@@ -99,4 +99,48 @@ export function parseMetadata(
     startFrame: getNum(raw, "start_frame"),
     stopFrame: getNum(raw, "stop_frame"),
   };
+}
+
+// ─── Experiment config (models/experiment_config.py) ─────────────────────────
+// Parse `0_config/{name}.yaml` to extract classify_behaviour and feature sets.
+export interface ExperimentConfigFile {
+  classifyBehaviour: Record<string, string[]>;
+  featureSets: string[];
+}
+
+function asStrList(v: unknown, path: string): string[] {
+  if (!Array.isArray(v))
+    throw new Error(`config ${path} must be an array of strings`);
+  return v.map((item, i) => {
+    if (typeof item !== "string")
+      throw new Error(`config ${path}[${i}] must be a string`);
+    return item;
+  });
+}
+
+export function parseExperimentConfig(
+  raw: Record<string, unknown>,
+): ExperimentConfigFile {
+  const classifyBehaviour: Record<string, string[]> = {};
+  const rawClassify = raw.classify_behaviour;
+  if (rawClassify !== undefined) {
+    const cb = asObj(rawClassify, "classify_behaviour");
+    for (const [behav, ref] of Object.entries(cb)) {
+      const r = asObj(ref, `classify_behaviour.${behav}`);
+      const subs = r.sub_behaviour;
+      classifyBehaviour[behav] =
+        subs !== undefined
+          ? asStrList(subs, `classify_behaviour.${behav}.sub_behaviour`)
+          : [];
+    }
+  }
+
+  const featureSets: string[] = [];
+  const rawFeatures = raw.extract_features;
+  if (rawFeatures !== undefined) {
+    const ef = asObj(rawFeatures, "extract_features");
+    featureSets.push(...Object.keys(ef).sort());
+  }
+
+  return { classifyBehaviour, featureSets };
 }

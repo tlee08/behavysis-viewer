@@ -1,7 +1,8 @@
-import { Box, MultiSelect, Select, Stack, Switch, Text } from "@mantine/core";
+import { Box, MultiSelect, Select, Stack, Switch } from "@mantine/core";
 import { useEffect, useRef } from "react";
 import { readFile } from "@tauri-apps/plugin-fs";
-import { loadFeatureData } from "../lib/parquetIO";
+import { getFeatureFilePath } from "../lib/fileManager";
+import { loadFeatureColumns, loadFeatureData } from "../lib/parquetIO";
 import { useStore } from "../store";
 
 export function FeaturesPanel() {
@@ -15,12 +16,52 @@ export function FeaturesPanel() {
     setFeatureYGlobal,
     featureScaleMode,
     setFeatureScaleMode,
+    featureSets,
+    activeFeatureSet,
+    setActiveFeatureSet,
+    classifyBehaviour,
+    setFeatureColumns,
   } = useStore();
 
   const prevSelected = useRef<string[]>([]);
 
   useEffect(() => {
-    if (!paths) return;
+    if (!paths || !activeFeatureSet) {
+      setFeatureColumns([]);
+      setSelectedFeatureColumns([]);
+      setFeatureData({});
+      return;
+    }
+
+    const fp = getFeatureFilePath(
+      paths.featuresDir,
+      paths.name,
+      activeFeatureSet,
+    );
+
+    readFile(fp)
+      .then((bytes) => loadFeatureColumns(new Uint8Array(bytes)))
+      .then((cols) => {
+        setFeatureColumns(cols);
+        setSelectedFeatureColumns([]);
+        setFeatureData({});
+      })
+      .catch(() => {
+        setFeatureColumns([]);
+        setSelectedFeatureColumns([]);
+        setFeatureData({});
+      });
+  }, [
+    activeFeatureSet,
+    paths,
+    classifyBehaviour,
+    setFeatureColumns,
+    setSelectedFeatureColumns,
+    setFeatureData,
+  ]);
+
+  useEffect(() => {
+    if (!paths || !activeFeatureSet) return;
     const sel = selectedFeatureColumns;
     const prev = prevSelected.current;
 
@@ -35,15 +76,31 @@ export function FeaturesPanel() {
       return;
     }
 
-    readFile(paths.featuresPath)
+    const fp = getFeatureFilePath(
+      paths.featuresDir,
+      paths.name,
+      activeFeatureSet,
+    );
+
+    readFile(fp)
       .then((bytes) => loadFeatureData(new Uint8Array(bytes), sel))
       .then((data) => setFeatureData(data))
       .catch(() => setFeatureData({}));
-  }, [selectedFeatureColumns, paths, setFeatureData]);
+  }, [selectedFeatureColumns, paths, activeFeatureSet, setFeatureData]);
 
   return (
     <Box p="xs" style={{ height: "100%", overflow: "auto" }}>
       <Stack gap="xs">
+        <Select
+          label="Feature set"
+          placeholder="Select a feature set…"
+          data={featureSets.map((s) => ({ value: s, label: s }))}
+          value={activeFeatureSet}
+          onChange={(v) => setActiveFeatureSet(v)}
+          size="xs"
+          clearable
+        />
+
         <MultiSelect
           label="Columns"
           placeholder="Search columns…"
@@ -54,6 +111,7 @@ export function FeaturesPanel() {
           clearable
           size="xs"
           maxValues={10}
+          disabled={!activeFeatureSet}
         />
 
         <Switch
@@ -61,6 +119,7 @@ export function FeaturesPanel() {
           checked={featureYGlobal}
           onChange={(e) => setFeatureYGlobal(e.currentTarget.checked)}
           size="xs"
+          disabled={!activeFeatureSet}
         />
 
         <Select
@@ -76,6 +135,7 @@ export function FeaturesPanel() {
           ]}
           size="xs"
           allowDeselect={false}
+          disabled={!activeFeatureSet}
         />
       </Stack>
     </Box>
