@@ -69,8 +69,8 @@ export function useExperimentIO() {
             .map((e) => e.name)
             .sort(),
         );
-      } catch {
-        // features dir doesn't exist yet — leave empty
+      } catch (err) {
+        console.warn("Cannot list features dir:", String(err));
       }
 
       const videoBytes = await readFile(expPaths.videoPath);
