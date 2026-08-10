@@ -1,6 +1,7 @@
 import { Box } from "@mantine/core";
 import { useCallback, useEffect, useRef } from "react";
 import type { FrameMetadata, FrameReader } from "../lib/frameReader";
+import { getColorMapColor } from "../lib/colors";
 import { useStore } from "../store";
 
 interface Props {
@@ -21,6 +22,8 @@ export function VideoPane({ reader, metadata }: Props) {
     showKeypoints,
     keypointPcutoff,
     keypointRadius,
+    keypointColorMode,
+    keypointColorMap,
     isPlaying,
     vidSpeed,
     currentFrame,
@@ -65,15 +68,37 @@ export function VideoPane({ reader, metadata }: Props) {
       const sy = h / config!.heightPx;
 
       const { defs, x, y, likelihood } = keypoints;
+      const colorByIndividual = keypointColorMode === "individual";
+      const keys = [
+        ...new Set(defs.map((d) => (colorByIndividual ? d.indiv : d.bpt))),
+      ].sort();
+      const colorIdx = new Map<string, number>();
+      keys.forEach((k, idx) => colorIdx.set(k, idx));
+
       for (let d = 0; d < defs.length; d++) {
         if (likelihood[d][i] < pcutoff) continue;
+        const key = colorByIndividual ? defs[d].indiv : defs[d].bpt;
         ctx.beginPath();
         ctx.arc(x[d][i] * sx, y[d][i] * sy, r, 0, Math.PI * 2);
-        ctx.fillStyle = defs[d].color;
+        ctx.fillStyle = getColorMapColor(
+          keypointColorMap,
+          colorIdx.get(key)!,
+          keys.length,
+        );
         ctx.fill();
       }
     },
-    [showKeypoints, keypoints, config, w, h, keypointPcutoff, keypointRadius],
+    [
+      showKeypoints,
+      keypoints,
+      config,
+      w,
+      h,
+      keypointPcutoff,
+      keypointRadius,
+      keypointColorMode,
+      keypointColorMap,
+    ],
   );
 
   useEffect(() => {

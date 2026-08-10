@@ -7,6 +7,7 @@ import type {
   KeypointData,
 } from "./shared/types";
 import type { FrameMetadata } from "./lib/frameReader";
+import type { ColorMapName, ColorMode } from "./lib/colors";
 
 interface AppState {
   paths: ExperimentPaths | null;
@@ -25,6 +26,8 @@ interface AppState {
   showKeypoints: boolean;
   keypointPcutoff: number;
   keypointRadius: number;
+  keypointColorMode: ColorMode;
+  keypointColorMap: ColorMapName;
   jumpSeconds: number;
   graphWindowSeconds: number;
 
@@ -53,6 +56,8 @@ interface AppState {
   setShowKeypoints: (show: boolean) => void;
   setKeypointPcutoff: (pcutoff: number) => void;
   setKeypointRadius: (radius: number) => void;
+  setKeypointColorMode: (mode: ColorMode) => void;
+  setKeypointColorMap: (map: ColorMapName) => void;
   setJumpSeconds: (seconds: number) => void;
   setGraphWindowSeconds: (seconds: number) => void;
 
@@ -93,6 +98,8 @@ export const useStore = create<AppState>((set, get) => ({
   showKeypoints: false,
   keypointPcutoff: 0.8,
   keypointRadius: 5,
+  keypointColorMode: "individual",
+  keypointColorMap: "hue",
   jumpSeconds: 5,
   graphWindowSeconds: 10,
 
@@ -128,6 +135,8 @@ export const useStore = create<AppState>((set, get) => ({
   setShowKeypoints: (showKeypoints) => set({ showKeypoints }),
   setKeypointPcutoff: (keypointPcutoff) => set({ keypointPcutoff }),
   setKeypointRadius: (keypointRadius) => set({ keypointRadius }),
+  setKeypointColorMode: (keypointColorMode) => set({ keypointColorMode }),
+  setKeypointColorMap: (keypointColorMap) => set({ keypointColorMap }),
   setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
 

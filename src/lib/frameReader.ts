@@ -92,6 +92,19 @@ export class FrameReader {
           this.active!.waiters.set(i, { resolve, reject });
         });
       }
+
+      if (i > this.active.end && i - this.active.end <= 30) {
+        const oldEnd = this.active.end;
+        this.active.end = Math.min(
+          i + this.maxCache,
+          this.metadata.totalFrames - 1,
+        );
+        this.feed(oldEnd + 1, this.active.end);
+        return new Promise((resolve, reject) => {
+          this.active!.waiters.set(i, { resolve, reject });
+        });
+      }
+
       const oldWaiters = this.active.waiters;
       this.active = null;
       for (const w of oldWaiters.values()) w.reject(new Error("Seeked"));

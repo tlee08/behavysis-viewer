@@ -3,6 +3,7 @@ import {
   Divider,
   Group,
   Popover,
+  Radio,
   Select,
   Slider,
   Stack,
@@ -10,6 +11,8 @@ import {
   Text,
 } from "@mantine/core";
 import { IconSettings } from "@tabler/icons-react";
+import { COLOURMAP_NAMES, COLOR_MODES } from "../../lib/colors";
+import type { ColorMapName, ColorMode } from "../../lib/colors";
 import { useStore } from "../../store";
 
 const SKIP_OPTS = [
@@ -57,6 +60,11 @@ const FOCUS_OPTS = [
   { value: "15", label: "15s" },
 ];
 
+const COLOURMAP_OPTS = COLOURMAP_NAMES.map((n) => ({
+  value: n,
+  label: n.charAt(0).toUpperCase() + n.slice(1),
+}));
+
 export function PlaybackSettingsPopover() {
   const {
     jumpSeconds,
@@ -75,12 +83,16 @@ export function PlaybackSettingsPopover() {
     setKeypointPcutoff,
     keypointRadius,
     setKeypointRadius,
+    keypointColorMode,
+    setKeypointColorMode,
+    keypointColorMap,
+    setKeypointColorMap,
   } = useStore();
   const pcutoff = keypointPcutoff;
   const radius = keypointRadius;
 
   return (
-    <Popover position="bottom-end" shadow="md" width={180}>
+    <Popover position="bottom-end" shadow="md" width={220}>
       <Popover.Target>
         <ActionIcon variant="subtle" color="gray">
           <IconSettings size={18} />
@@ -185,6 +197,26 @@ export function PlaybackSettingsPopover() {
               {radius.toFixed(0)}px
             </Text>
           </Group>
+          <Divider />
+          <Radio.Group
+            value={keypointColorMode}
+            onChange={(v) => setKeypointColorMode(v as ColorMode)}
+            size="xs"
+          >
+            <Group gap="xs" ml={28}>
+              {COLOR_MODES.map((m) => (
+                <Radio key={m.value} value={m.value} label={m.label} />
+              ))}
+            </Group>
+          </Radio.Group>
+          <Select
+            data={COLOURMAP_OPTS}
+            value={keypointColorMap}
+            onChange={(v) => v && setKeypointColorMap(v as ColorMapName)}
+            size="xs"
+            ml={28}
+            allowDeselect={false}
+          />
         </Stack>
       </Popover.Dropdown>
     </Popover>
