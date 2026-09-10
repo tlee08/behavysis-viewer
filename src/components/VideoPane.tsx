@@ -12,8 +12,6 @@ interface Props {
 export function VideoPane({ reader, metadata }: Props) {
   const videoRef = useRef<HTMLCanvasElement>(null);
   const kptRef = useRef<HTMLCanvasElement>(null);
-  const raf = useRef(0);
-  const clock = useRef(0);
 
   const {
     config,
@@ -25,7 +23,6 @@ export function VideoPane({ reader, metadata }: Props) {
     keypointColorMode,
     keypointColorMap,
     isPlaying,
-    vidSpeed,
     currentFrame,
     setCurrentFrame,
     setIsPlaying,
@@ -36,15 +33,15 @@ export function VideoPane({ reader, metadata }: Props) {
   const h = config!.heightPx;
 
   const drawFrame = useCallback(
-    (i: number) => {
+    (i: number): Promise<void> => {
       const ctx = videoRef.current?.getContext("2d");
-      if (!ctx || !reader) return;
+      if (!ctx || !reader) return Promise.resolve();
       if (!showVideo) {
         ctx.fillStyle = "#111";
         ctx.fillRect(0, 0, w, h);
-        return;
+        return Promise.resolve();
       }
-      reader
+      return reader
         .getFrame(i)
         .then((f) => {
           ctx.clearRect(0, 0, w, h);
@@ -104,47 +101,48 @@ export function VideoPane({ reader, metadata }: Props) {
   useEffect(() => {
     if (!isPlaying || !reader || !metadata) return;
 
-    const interval = 1000 / (fps * vidSpeed);
-    let nextTime = 0;
-    clock.current = useStore.getState().currentFrame;
+    let frame = useStore.getState().currentFrame;
+    let cancelled = false;
 
-    const tick = (now: number) => {
-      if (!useStore.getState().isPlaying) return;
-      if (!nextTime) nextTime = now;
+    const sleep = (ms: number) =>
+      new Promise<void>((resolve) => setTimeout(resolve, ms));
 
-      if (now >= nextTime) {
-        const elapsed = now - nextTime + interval;
-        const advance = Math.min(
-          Math.max(1, Math.floor(elapsed / interval)),
-          metadata.totalFrames - 1 - clock.current,
-        );
+    const loop = async () => {
+      while (!cancelled) {
+        const s = useStore.getState();
+        if (!s.isPlaying) break;
 
-        if (Math.abs(useStore.getState().currentFrame - clock.current) > 2) {
-          clock.current = useStore.getState().currentFrame;
-          nextTime = now;
-        } else {
-          clock.current += advance;
-          nextTime += advance * interval;
-          setCurrentFrame(clock.current);
-          drawFrame(clock.current);
-          drawKpts(clock.current);
-          if (clock.current >= metadata.totalFrames - 1) {
-            setIsPlaying(false);
-            return;
-          }
+        if (Math.abs(s.currentFrame - frame) > 2) {
+          frame = s.currentFrame;
         }
+
+        const start = performance.now();
+        await drawFrame(frame);
+        if (cancelled) break;
+        drawKpts(frame);
+        setCurrentFrame(frame);
+
+        if (frame >= metadata.totalFrames - 1) {
+          setIsPlaying(false);
+          break;
+        }
+        frame += 1;
+
+        const interval = 1000 / (fps * useStore.getState().vidSpeed);
+        const wait = interval - (performance.now() - start);
+        if (wait > 0) await sleep(wait);
       }
-      raf.current = requestAnimationFrame(tick);
     };
 
-    raf.current = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(raf.current);
+    loop();
+    return () => {
+      cancelled = true;
+    };
   }, [
     isPlaying,
     reader,
     metadata,
     fps,
-    vidSpeed,
     showVideo,
     showKeypoints,
     keypoints,
