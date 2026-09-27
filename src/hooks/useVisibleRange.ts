@@ -9,9 +9,6 @@ export function useVisibleRange(): [number, number] {
 
   return useMemo(() => {
     const half = Math.floor((graphWindowSeconds * fps) / 2);
-    return [
-      Math.max(0, currentFrame - half),
-      Math.min(numFrames - 1, currentFrame + half),
-    ];
+    return [currentFrame - half, currentFrame + half];
   }, [currentFrame, graphWindowSeconds, numFrames, fps]);
 }
