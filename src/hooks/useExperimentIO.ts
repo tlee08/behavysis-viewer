@@ -1,5 +1,10 @@
 import { open } from "@tauri-apps/plugin-dialog";
-import { readDir, readFile, readTextFile, writeFile } from "@tauri-apps/plugin-fs";
+import {
+  readDir,
+  readFile,
+  readTextFile,
+  writeFile,
+} from "@tauri-apps/plugin-fs";
 import { load as yamlLoad } from "js-yaml";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { resolveExperimentPaths } from "../lib/fileManager";
@@ -187,7 +192,13 @@ export function useExperimentIO() {
       setStatus(`Error: ${String(err)}`);
       setDiagnostics([]);
     }
-  }, [loadExperiment, setVideoMetadata, setFeatureSets, setPredicted, setDiagnostics]);
+  }, [
+    loadExperiment,
+    setVideoMetadata,
+    setFeatureSets,
+    setPredicted,
+    setDiagnostics,
+  ]);
 
   const save = useCallback(async () => {
     if (!paths || !config) {

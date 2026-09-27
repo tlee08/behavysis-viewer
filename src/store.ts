@@ -31,6 +31,8 @@ interface AppState {
   keypointColorMode: ColorMode;
   keypointColorMap: ColorMapName;
   jumpSeconds: number;
+  skipUnit: "seconds" | "frames";
+  jumpFrames: number;
   graphWindowSeconds: number;
 
   featureColumns: string[];
@@ -71,6 +73,8 @@ interface AppState {
   setKeypointColorMode: (mode: ColorMode) => void;
   setKeypointColorMap: (map: ColorMapName) => void;
   setJumpSeconds: (seconds: number) => void;
+  setSkipUnit: (unit: "seconds" | "frames") => void;
+  setJumpFrames: (frames: number) => void;
   setGraphWindowSeconds: (seconds: number) => void;
 
   setFeatureColumns: (columns: string[]) => void;
@@ -121,6 +125,8 @@ export const useStore = create<AppState>((set, get) => ({
   keypointColorMode: "individual",
   keypointColorMap: "hue",
   jumpSeconds: 5,
+  skipUnit: "seconds",
+  jumpFrames: 5,
   graphWindowSeconds: 10,
 
   featureColumns: [],
@@ -181,6 +187,8 @@ export const useStore = create<AppState>((set, get) => ({
   setKeypointColorMode: (keypointColorMode) => set({ keypointColorMode }),
   setKeypointColorMap: (keypointColorMap) => set({ keypointColorMap }),
   setJumpSeconds: (jumpSeconds) => set({ jumpSeconds }),
+  setSkipUnit: (skipUnit) => set({ skipUnit }),
+  setJumpFrames: (jumpFrames) => set({ jumpFrames }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
 
   setFeatureColumns: (featureColumns) => set({ featureColumns }),
@@ -256,4 +264,11 @@ export function filterBoutsByBehaviour(
   if (behaviours.length === 0) return bouts;
   const set = new Set(behaviours);
   return bouts.filter((b) => set.has(b.behav));
+}
+
+export function getSkipFrames(fps: number): number {
+  const s = useStore.getState();
+  return s.skipUnit === "frames"
+    ? s.jumpFrames
+    : Math.round(s.jumpSeconds * fps);
 }

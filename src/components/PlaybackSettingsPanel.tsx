@@ -1,5 +1,6 @@
 import {
   Divider,
+  Group,
   Radio,
   Select,
   Slider,
@@ -7,10 +8,10 @@ import {
   Switch,
   Text,
 } from "@mantine/core";
-import { COLOR_MODES, COLOURMAP_NAMES } from "../lib/colors";
 import type { ColorMapName, ColorMode } from "../lib/colors";
-import { Panel } from "./Panel";
+import { COLOR_MODES, COLOURMAP_NAMES } from "../lib/colors";
 import { useStore } from "../store";
+import { Panel } from "./Panel";
 
 const SKIP_OPTS = [
   { value: "1", label: "1s" },
@@ -20,6 +21,11 @@ const SKIP_OPTS = [
   { value: "15", label: "15s" },
   { value: "20", label: "20s" },
 ];
+
+const FRAME_SKIP_OPTS = [1, 5, 10, 15, 20, 30].map((n) => ({
+  value: String(n),
+  label: `${n} frame${n === 1 ? "" : "s"}`,
+}));
 
 const FOCUS_OPTS = [
   { value: "0", label: "0s" },
@@ -66,6 +72,10 @@ export function PlaybackSettingsPanel(): React.ReactElement {
   const {
     jumpSeconds,
     setJumpSeconds,
+    skipUnit,
+    setSkipUnit,
+    jumpFrames,
+    setJumpFrames,
     focusSizeSeconds,
     setFocusSizeSeconds,
     vidSpeed,
@@ -89,11 +99,35 @@ export function PlaybackSettingsPanel(): React.ReactElement {
   return (
     <Panel p="xs">
       <Stack gap="xs">
+        <Group gap="xs" wrap="nowrap" align="end">
+          <Switch
+            label={skipUnit}
+            checked={skipUnit === "frames"}
+            onChange={(e) =>
+              setSkipUnit(e.currentTarget.checked ? "frames" : "seconds")
+            }
+            size="xs"
+          />
+          <Select
+            label="Skip"
+            data={skipUnit === "seconds" ? SKIP_OPTS : FRAME_SKIP_OPTS}
+            value={String(skipUnit === "seconds" ? jumpSeconds : jumpFrames)}
+            onChange={(v) =>
+              v &&
+              (skipUnit === "seconds"
+                ? setJumpSeconds(Number(v))
+                : setJumpFrames(Number(v)))
+            }
+            size="xs"
+            allowDeselect={false}
+            style={{ flex: 1 }}
+          />
+        </Group>
         <Select
-          label="Skip"
-          data={SKIP_OPTS}
-          value={String(jumpSeconds)}
-          onChange={(v) => v && setJumpSeconds(Number(v))}
+          label="Speed"
+          data={SPEED_OPTS}
+          value={String(vidSpeed)}
+          onChange={(v) => v && setVidSpeed(Number(v))}
           size="xs"
           allowDeselect={false}
         />
@@ -102,14 +136,6 @@ export function PlaybackSettingsPanel(): React.ReactElement {
           data={FOCUS_OPTS}
           value={String(focusSizeSeconds)}
           onChange={(v) => v && setFocusSizeSeconds(Number(v))}
-          size="xs"
-          allowDeselect={false}
-        />
-        <Select
-          label="Speed"
-          data={SPEED_OPTS}
-          value={String(vidSpeed)}
-          onChange={(v) => v && setVidSpeed(Number(v))}
           size="xs"
           allowDeselect={false}
         />
@@ -134,7 +160,6 @@ export function PlaybackSettingsPanel(): React.ReactElement {
           checked={showKeypoints}
           onChange={(e) => setShowKeypoints(e.currentTarget.checked)}
         />
-
         <Text size="xs" c="dimmed">
           Keypoint p-cutoff: {keypointPcutoff.toFixed(2)}
         </Text>
@@ -147,7 +172,6 @@ export function PlaybackSettingsPanel(): React.ReactElement {
           size="xs"
           color="blue.4"
         />
-
         <Text size="xs" c="dimmed">
           Keypoint radius: {keypointRadius}px
         </Text>
@@ -175,7 +199,6 @@ export function PlaybackSettingsPanel(): React.ReactElement {
             ))}
           </Stack>
         </Radio.Group>
-
         <Select
           label="Colour map"
           data={COLOURMAP_OPTS}

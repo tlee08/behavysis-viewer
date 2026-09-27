@@ -1,5 +1,5 @@
 import { useEffect } from "react";
-import { getBoutById, useStore } from "../store";
+import { getBoutById, getSkipFrames, useStore } from "../store";
 
 export function useKeyboardShortcuts(): void {
   useEffect(() => {
@@ -15,12 +15,11 @@ export function useKeyboardShortcuts(): void {
         bouts,
         selectedBoutId,
         config,
-        videoMetadata,
         showKeypoints,
         focusSizeSeconds,
-        jumpSeconds,
       } = state;
       const fps = config!.fps;
+      const skipFrames = getSkipFrames(fps);
 
       switch (e.key) {
         case " ":
@@ -29,17 +28,12 @@ export function useKeyboardShortcuts(): void {
           break;
         case "ArrowLeft":
           e.preventDefault();
-          state.setCurrentFrame(
-            Math.max(0, currentFrame - Math.round(jumpSeconds * fps)),
-          );
+          state.setCurrentFrame(Math.max(0, currentFrame - skipFrames));
           break;
         case "ArrowRight":
           e.preventDefault();
           state.setCurrentFrame(
-            Math.min(
-              numFrames - 1,
-              currentFrame + Math.round(jumpSeconds * fps),
-            ),
+            Math.min(numFrames - 1, currentFrame + skipFrames),
           );
           break;
         case "k":
