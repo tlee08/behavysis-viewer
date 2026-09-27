@@ -1,7 +1,7 @@
 import { Box } from "@mantine/core";
 import { useCallback, useEffect, useRef } from "react";
-import type { FrameMetadata, FrameReader } from "../lib/frameReader";
 import { getColorMapColor } from "../lib/colors";
+import type { FrameMetadata, FrameReader } from "../lib/frameReader";
 import { useStore } from "../store";
 
 interface Props {
@@ -118,7 +118,6 @@ export function VideoPane({ reader, metadata }: Props) {
 
         const start = performance.now();
         await drawFrame(frame);
-        if (cancelled) break;
         drawKpts(frame);
         setCurrentFrame(frame);
 

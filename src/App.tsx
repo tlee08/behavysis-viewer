@@ -8,7 +8,7 @@ import { DiagnosticsPanel } from "./components/DiagnosticsPanel";
 import { FeatureGraph } from "./components/FeatureGraph";
 import { FeaturesPanel } from "./components/FeaturesPanel";
 import { MenuBar } from "./components/MenuBar";
-import { PlaybackBar } from "./components/playback/PlaybackBar";
+import { PlaybackBar } from "./components/PlaybackBar";
 import { PlaybackSettingsPanel } from "./components/PlaybackSettingsPanel";
 import { VideoPane } from "./components/VideoPane";
 import { useExperimentIO } from "./hooks/useExperimentIO";
