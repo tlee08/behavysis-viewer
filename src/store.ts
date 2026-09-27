@@ -1,4 +1,6 @@
 import { create } from "zustand";
+import type { ColorMapName, ColorMode } from "./lib/colors";
+import type { FrameMetadata } from "./lib/frameReader";
 import type {
   ActualValue,
   AppConfig,
@@ -6,8 +8,6 @@ import type {
   ExperimentPaths,
   KeypointData,
 } from "./shared/types";
-import type { FrameMetadata } from "./lib/frameReader";
-import type { ColorMapName, ColorMode } from "./lib/colors";
 
 interface AppState {
   paths: ExperimentPaths | null;
@@ -122,7 +122,15 @@ export const useStore = create<AppState>((set, get) => ({
 
   selectedBoutId: null,
 
-  loadExperiment: (paths, config, numFrames, bouts, keypoints, classifyBehaviour, featureSets) => {
+  loadExperiment: (
+    paths,
+    config,
+    numFrames,
+    bouts,
+    keypoints,
+    classifyBehaviour,
+    featureSets,
+  ) => {
     set({
       paths,
       config,
@@ -161,7 +169,8 @@ export const useStore = create<AppState>((set, get) => ({
   setFeatureYGlobal: (featureYGlobal) => set({ featureYGlobal }),
   setFeatureScaleMode: (featureScaleMode) => set({ featureScaleMode }),
   setFeatureSets: (featureSets) => set({ featureSets }),
-  setActiveFeatureSet: (activeFeatureSet) => set({ activeFeatureSet }),
+  setActiveFeatureSet: (activeFeatureSet) =>
+    set({ activeFeatureSet, selectedFeatureColumns: [], featureData: {} }),
   setClassifyBehaviour: (classifyBehaviour) => set({ classifyBehaviour }),
 
   selectBout: (selectedBoutId) => {

@@ -48,17 +48,17 @@ Note: "+" means splitter (right now react-resizable-panels Separator)
 (when in features tab)
 |--------------------------------------------------------------|
 | Menu bar                                                     |
-|--------------------------|-----------------------------------|
-| Video                    | Tab selector (features)           |
-| (scales in black sides)  |-----------------------------------|
-|                          | FeaturesPanel                     |
-|                          |                                   |
-|                          |                                   |
-|                          |                                   |
-|                          |                                   |
-|                          |                                   |
-|                          |                                   |
-|                          |                                   |
+|--------------------------------------------------------------|
+| Video                    + Tab selector (features)           |
+| (scales in black sides)  +-----------------------------------|
+|                          + FeaturesPanel                     |
+|                          +                                   |
+|                          +                                   |
+|                          +                                   |
+|                          +                                   |
+|                          +                                   |
+|                          +                                   |
+|                          +                                   |
 |++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++|
 | BoutTimeline                                                 |
 |                                                              |

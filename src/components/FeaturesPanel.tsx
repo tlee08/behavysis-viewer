@@ -27,8 +27,6 @@ export function FeaturesPanel() {
   useEffect(() => {
     if (!paths || !activeFeatureSet) {
       setFeatureColumns([]);
-      setSelectedFeatureColumns([]);
-      setFeatureData({});
       return;
     }
 
@@ -40,23 +38,9 @@ export function FeaturesPanel() {
 
     readFile(fp)
       .then((bytes) => loadFeatureColumns(new Uint8Array(bytes)))
-      .then((cols) => {
-        setFeatureColumns(cols);
-        setSelectedFeatureColumns([]);
-        setFeatureData({});
-      })
-      .catch(() => {
-        setFeatureColumns([]);
-        setSelectedFeatureColumns([]);
-        setFeatureData({});
-      });
-  }, [
-    activeFeatureSet,
-    paths,
-    setFeatureColumns,
-    setSelectedFeatureColumns,
-    setFeatureData,
-  ]);
+      .then(setFeatureColumns)
+      .catch(() => setFeatureColumns([]));
+  }, [activeFeatureSet, paths, setFeatureColumns]);
 
   useEffect(() => {
     if (!paths || !activeFeatureSet) return;
