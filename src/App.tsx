@@ -20,7 +20,7 @@ export default function App(): React.ReactElement {
   const config = useStore((s) => s.config);
   const hasPredictions = useStore((s) => s.selectedBehaviours.length > 0);
   const hasFeatures = useStore((s) => s.selectedFeatureColumns.length > 0);
-  useKeyboardShortcuts();
+  useKeyboardShortcuts({ open, save });
 
   return (
     <Box

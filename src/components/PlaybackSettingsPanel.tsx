@@ -14,7 +14,7 @@ import { useStore } from "../store";
 import { Panel } from "./Panel";
 
 const SKIP_SEC_OPTS = [1, 2, 5, 10, 15, 20, 30].map((n) => ({
-  value: n,
+  value: String(n),
   label: `${n}s`,
 }));
 

@@ -14,6 +14,7 @@ export function PlaybackBar() {
   const fps = useStore((s) => s.config!.fps);
   const skip = getSkipFrames(fps);
   const timeStr = frameToTimecode(currentFrame, fps);
+  const totalTimeStr = frameToTimecode(numFrames - 1, fps);
 
   return (
     <Group
@@ -68,8 +69,8 @@ export function PlaybackBar() {
         />
       </Box>
 
-      <Text size="xs" c="dimmed" ff="monospace" w={36} ta="right">
-        {timeStr}
+      <Text size="xs" c="dimmed" ff="monospace" ta="right">
+        {`${timeStr}/${totalTimeStr} \n(${currentFrame + 1}/${numFrames})`}
       </Text>
     </Group>
   );

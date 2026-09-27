@@ -1,9 +1,33 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { getBoutById, getSkipFrames, useStore } from "../store";
 
-export function useKeyboardShortcuts(): void {
+interface Props {
+  open: () => void;
+  save: () => void;
+}
+
+export function useKeyboardShortcuts({ open, save }: Props): void {
+  const openRef = useRef(open);
+  const saveRef = useRef(save);
+  openRef.current = open;
+  saveRef.current = save;
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
+      if (e.metaKey || e.ctrlKey) {
+        const key = e.key.toLowerCase();
+        if (key === "o") {
+          e.preventDefault();
+          openRef.current();
+          return;
+        }
+        if (key === "s") {
+          e.preventDefault();
+          saveRef.current();
+          return;
+        }
+      }
+
       const tag = (e.target as HTMLElement).tagName;
       if (tag === "INPUT" || tag === "SELECT") return;
 
