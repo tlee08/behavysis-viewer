@@ -1,4 +1,5 @@
-import { Box, MultiSelect } from "@mantine/core";
+import { MultiSelect } from "@mantine/core";
+import { Panel } from "./Panel";
 import { useStore } from "../store";
 
 export function ClassifierPanel(): React.ReactElement {
@@ -9,7 +10,7 @@ export function ClassifierPanel(): React.ReactElement {
   const behaviours = predicted?.behaviours ?? [];
 
   return (
-    <Box p="xs">
+    <Panel p="xs">
       <MultiSelect
         label="Behaviours"
         placeholder="Select behaviours…"
@@ -20,6 +21,6 @@ export function ClassifierPanel(): React.ReactElement {
         clearable
         disabled={predicted === null}
       />
-    </Box>
+    </Panel>
   );
 }

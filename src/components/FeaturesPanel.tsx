@@ -1,8 +1,9 @@
-import { Box, MultiSelect, Select, Stack, Switch } from "@mantine/core";
+import { MultiSelect, Select, Stack, Switch } from "@mantine/core";
 import { useEffect, useRef } from "react";
 import { readFile } from "@tauri-apps/plugin-fs";
 import { getFeatureFilePath } from "../lib/fileManager";
 import { loadFeatureColumns, loadFeatureData } from "../lib/parquetIO";
+import { Panel } from "./Panel";
 import { useStore } from "../store";
 
 export function FeaturesPanel() {
@@ -71,7 +72,7 @@ export function FeaturesPanel() {
   }, [selectedFeatureColumns, paths, activeFeatureSet, setFeatureData]);
 
   return (
-    <Box p="xs" style={{ height: "100%", overflow: "auto" }}>
+    <Panel p="xs">
       <Stack gap="xs">
         <Select
           label="Feature set"
@@ -120,6 +121,6 @@ export function FeaturesPanel() {
           disabled={!activeFeatureSet}
         />
       </Stack>
-    </Box>
+    </Panel>
   );
 }

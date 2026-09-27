@@ -1,5 +1,4 @@
 import {
-  Box,
   Divider,
   Radio,
   Select,
@@ -10,6 +9,7 @@ import {
 } from "@mantine/core";
 import { COLOR_MODES, COLOURMAP_NAMES } from "../lib/colors";
 import type { ColorMapName, ColorMode } from "../lib/colors";
+import { Panel } from "./Panel";
 import { useStore } from "../store";
 
 const SKIP_OPTS = [
@@ -87,7 +87,7 @@ export function PlaybackSettingsPanel(): React.ReactElement {
   } = useStore();
 
   return (
-    <Box p="xs" style={{ height: "100%", overflow: "auto" }}>
+    <Panel p="xs">
       <Stack gap="xs">
         <Select
           label="Skip"
@@ -185,6 +185,6 @@ export function PlaybackSettingsPanel(): React.ReactElement {
           allowDeselect={false}
         />
       </Stack>
-    </Box>
+    </Panel>
   );
 }

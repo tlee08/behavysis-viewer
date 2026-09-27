@@ -1,5 +1,6 @@
-import { Box, Group, Stack, Text, ThemeIcon } from "@mantine/core";
+import { Group, Stack, Text, ThemeIcon } from "@mantine/core";
 import { IconCheck, IconX } from "@tabler/icons-react";
+import { Panel } from "./Panel";
 import { useStore } from "../store";
 
 export function DiagnosticsPanel(): React.ReactElement {
@@ -7,16 +8,16 @@ export function DiagnosticsPanel(): React.ReactElement {
 
   if (diagnostics.length === 0) {
     return (
-      <Box p="xs">
+      <Panel p="xs">
         <Text size="xs" c="dimmed">
           No experiment loaded.
         </Text>
-      </Box>
+      </Panel>
     );
   }
 
   return (
-    <Box p="xs" style={{ height: "100%", overflow: "auto" }}>
+    <Panel p="xs">
       <Stack gap="sm">
         {diagnostics.map((d) => (
           <Group key={d.label} gap="xs" wrap="nowrap" align="flex-start">
@@ -54,6 +55,6 @@ export function DiagnosticsPanel(): React.ReactElement {
           </Group>
         ))}
       </Stack>
-    </Box>
+    </Panel>
   );
 }

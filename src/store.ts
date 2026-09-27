@@ -47,6 +47,7 @@ interface AppState {
   diagnostics: FileDiagnostic[];
 
   selectedBoutId: number | null;
+  filterBehaviours: string[];
 
   loadExperiment: (
     paths: ExperimentPaths,
@@ -86,6 +87,7 @@ interface AppState {
   setDiagnostics: (diagnostics: FileDiagnostic[]) => void;
 
   selectBout: (id: number | null) => void;
+  setFilterBehaviours: (behaviours: string[]) => void;
   interimBoutEdit: {
     boutId: number;
     start: number;
@@ -135,6 +137,7 @@ export const useStore = create<AppState>((set, get) => ({
   diagnostics: [],
 
   selectedBoutId: null,
+  filterBehaviours: [],
 
   loadExperiment: (
     paths,
@@ -155,6 +158,7 @@ export const useStore = create<AppState>((set, get) => ({
       featureSets,
       currentFrame: 0,
       selectedBoutId: null,
+      filterBehaviours: [],
       featureColumns: [],
       selectedFeatureColumns: [],
       featureData: {},
@@ -208,6 +212,8 @@ export const useStore = create<AppState>((set, get) => ({
     });
   },
 
+  setFilterBehaviours: (filterBehaviours) => set({ filterBehaviours }),
+
   interimBoutEdit: null,
   setInterimBoutEdit: (interimBoutEdit) => set({ interimBoutEdit }),
 
@@ -241,4 +247,13 @@ export const useStore = create<AppState>((set, get) => ({
 
 export function getBoutById(id: number): Bout | undefined {
   return useStore.getState().bouts.find((b) => b.id === id);
+}
+
+export function filterBoutsByBehaviour(
+  bouts: Bout[],
+  behaviours: string[],
+): Bout[] {
+  if (behaviours.length === 0) return bouts;
+  const set = new Set(behaviours);
+  return bouts.filter((b) => set.has(b.behav));
 }

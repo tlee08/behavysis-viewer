@@ -5,7 +5,8 @@ import { Layer, Line, Rect, Stage, Text } from "react-konva";
 import { ACTUAL_COLORS } from "../shared/types";
 import { useElementSize } from "../hooks/useElementSize";
 import { useVisibleRange } from "../hooks/useVisibleRange";
-import { useStore } from "../store";
+import { useStore, filterBoutsByBehaviour } from "../store";
+import { Panel } from "./Panel";
 
 const ROW_HEIGHT = 24;
 const HANDLE_W = 8;
@@ -17,6 +18,7 @@ export function BoutTimeline(): React.ReactElement {
 
   const {
     bouts,
+    filterBehaviours,
     selectBout,
     selectedBoutId,
     currentFrame,
@@ -32,9 +34,14 @@ export function BoutTimeline(): React.ReactElement {
   const chartWidth = width - MARGIN.left - MARGIN.right;
   const chartHeight = height - MARGIN.top - MARGIN.bottom;
 
+  const visibleBouts = useMemo(
+    () => filterBoutsByBehaviour(bouts, filterBehaviours),
+    [bouts, filterBehaviours],
+  );
+
   const behavNames = useMemo(
-    () => [...new Set(bouts.map((b) => b.behav))],
-    [bouts],
+    () => [...new Set(visibleBouts.map((b) => b.behav))],
+    [visibleBouts],
   );
 
   const rowHeight =
@@ -85,9 +92,9 @@ export function BoutTimeline(): React.ReactElement {
   const selectedBout = useMemo(
     () =>
       selectedBoutId !== null
-        ? (bouts.find((b) => b.id === selectedBoutId) ?? null)
+        ? (visibleBouts.find((b) => b.id === selectedBoutId) ?? null)
         : null,
-    [bouts, selectedBoutId],
+    [visibleBouts, selectedBoutId],
   );
 
   const ghostVisible =
@@ -140,135 +147,131 @@ export function BoutTimeline(): React.ReactElement {
     [interimBoutEdit, xToFrame, numFrames, setInterimBoutEdit],
   );
 
-  const show = bouts.length > 0 && width > 0 && height > 0;
+  const show = visibleBouts.length > 0 && width > 0 && height > 0;
   const currentTimeX = frameToX(currentFrame);
 
   return (
-    <Box ref={ref} bg="#1a1a2e" w="100%" h="100%">
-      {show && (
-        <Stage width={width} height={height}>
-          <Layer>
-            <Rect
-              x={0}
-              y={0}
-              width={width}
-              height={height}
-              fill="#1a1a2e"
-            />
-            {xTicks.map((t, i) => (
-              <Text
-                key={`tick-${i}`}
-                x={secToX(t)}
-                y={height - MARGIN.bottom + 4}
-                text={`${t.toFixed(1)}s`}
-                fontSize={11}
-                fill={theme.colors.dark[2]}
-                align="center"
-              />
-            ))}
-            <Line
-              points={[
-                MARGIN.left,
-                height - MARGIN.bottom,
-                MARGIN.left + chartWidth,
-                height - MARGIN.bottom,
-              ]}
-              stroke={theme.colors.dark[4]}
-              strokeWidth={1}
-            />
-            {behavNames.map((name) => (
-              <Text
-                key={`label-${name}`}
-                x={MARGIN.left - 4}
-                y={behavToY(name) - 7}
-                text={name}
-                fontSize={11}
-                fill={theme.colors.dark[2]}
-                align="right"
-                fontFamily="monospace"
-              />
-            ))}
-          </Layer>
-
-          <Layer>
-            {bouts.map((b) => {
-              const x0 = frameToX(b.start);
-              const x1 = frameToX(b.stop + 1);
-              const y = behavToY(b.behav) - barH / 2;
-              const isSelected = b.id === selectedBoutId;
-              const color = ACTUAL_COLORS[b.actual];
-              return (
-                <Rect
-                  key={`bout-${b.id}`}
-                  x={x0}
-                  y={y}
-                  width={Math.max(x1 - x0, 2)}
-                  height={barH}
-                  fill={isSelected ? color : color + "BF"}
-                  stroke={isSelected ? theme.white : undefined}
-                  strokeWidth={isSelected ? 1.5 : 0}
-                  onClick={() => selectBout(b.id)}
-                />
-              );
-            })}
-          </Layer>
-
-          {ghostVisible && (
+    <Panel bg="#1a1a2e" style={{ overflow: "hidden" }}>
+      <Box ref={ref} w="100%" h="100%">
+        {show && (
+          <Stage width={width} height={height}>
             <Layer>
-              <Rect
-                x={ghostX}
-                y={ghostY}
-                width={ghostWidth}
-                height={barH}
-                fill={ghostColor + "40"}
-                stroke={ghostColor}
+              <Rect x={0} y={0} width={width} height={height} fill="#1a1a2e" />
+              {xTicks.map((t, i) => (
+                <Text
+                  key={`tick-${i}`}
+                  x={secToX(t)}
+                  y={height - MARGIN.bottom + 4}
+                  text={`${t.toFixed(1)}s`}
+                  fontSize={11}
+                  fill={theme.colors.dark[2]}
+                  align="center"
+                />
+              ))}
+              <Line
+                points={[
+                  MARGIN.left,
+                  height - MARGIN.bottom,
+                  MARGIN.left + chartWidth,
+                  height - MARGIN.bottom,
+                ]}
+                stroke={theme.colors.dark[4]}
                 strokeWidth={1}
-                dash={[4, 4]}
+              />
+              {behavNames.map((name) => (
+                <Text
+                  key={`label-${name}`}
+                  x={MARGIN.left - 4}
+                  y={behavToY(name) - 7}
+                  text={name}
+                  fontSize={11}
+                  fill={theme.colors.dark[2]}
+                  align="right"
+                  fontFamily="monospace"
+                />
+              ))}
+            </Layer>
+
+            <Layer>
+              {visibleBouts.map((b) => {
+                const x0 = frameToX(b.start);
+                const x1 = frameToX(b.stop + 1);
+                const y = behavToY(b.behav) - barH / 2;
+                const isSelected = b.id === selectedBoutId;
+                const color = ACTUAL_COLORS[b.actual];
+                return (
+                  <Rect
+                    key={`bout-${b.id}`}
+                    x={x0}
+                    y={y}
+                    width={Math.max(x1 - x0, 2)}
+                    height={barH}
+                    fill={isSelected ? color : color + "BF"}
+                    stroke={isSelected ? theme.white : undefined}
+                    strokeWidth={isSelected ? 1.5 : 0}
+                    onClick={() => selectBout(b.id)}
+                  />
+                );
+              })}
+            </Layer>
+
+            {ghostVisible && (
+              <Layer>
+                <Rect
+                  x={ghostX}
+                  y={ghostY}
+                  width={ghostWidth}
+                  height={barH}
+                  fill={ghostColor + "40"}
+                  stroke={ghostColor}
+                  strokeWidth={1}
+                  dash={[4, 4]}
+                  listening={false}
+                />
+                <Rect
+                  x={ghostX - HANDLE_W / 2}
+                  y={ghostY}
+                  width={HANDLE_W}
+                  height={barH}
+                  fill={theme.white}
+                  stroke={ghostColor}
+                  strokeWidth={1}
+                  draggable
+                  dragBoundFunc={(pos) => handleDragBound("start", pos)}
+                  onDragEnd={(e) => handleDragEnd("start", e)}
+                />
+                <Rect
+                  x={ghostEndX - HANDLE_W / 2}
+                  y={ghostY}
+                  width={HANDLE_W}
+                  height={barH}
+                  fill={theme.white}
+                  stroke={ghostColor}
+                  strokeWidth={1}
+                  draggable
+                  dragBoundFunc={(pos) => handleDragBound("stop", pos)}
+                  onDragEnd={(e) => handleDragEnd("stop", e)}
+                />
+              </Layer>
+            )}
+
+            <Layer>
+              <Line
+                points={[
+                  currentTimeX,
+                  MARGIN.top,
+                  currentTimeX,
+                  height - MARGIN.bottom,
+                ]}
+                stroke={theme.white}
+                strokeWidth={1.5}
+                dash={[3, 3]}
                 listening={false}
               />
-              <Rect
-                x={ghostX - HANDLE_W / 2}
-                y={ghostY}
-                width={HANDLE_W}
-                height={barH}
-                fill={theme.white}
-                stroke={ghostColor}
-                strokeWidth={1}
-                draggable
-                dragBoundFunc={(pos) => handleDragBound("start", pos)}
-                onDragEnd={(e) => handleDragEnd("start", e)}
-              />
-              <Rect
-                x={ghostEndX - HANDLE_W / 2}
-                y={ghostY}
-                width={HANDLE_W}
-                height={barH}
-                fill={theme.white}
-                stroke={ghostColor}
-                strokeWidth={1}
-                draggable
-                dragBoundFunc={(pos) => handleDragBound("stop", pos)}
-                onDragEnd={(e) => handleDragEnd("stop", e)}
-              />
             </Layer>
-          )}
-
-          <Layer>
-            <Line
-              points={[
-                currentTimeX,
-                MARGIN.top,
-                currentTimeX,
-                height - MARGIN.bottom,
-              ]}
-              stroke={theme.white}
-              strokeWidth={1.5}
-              dash={[3, 3]}
-              listening={false}
-            />
-          </Layer>
-        </Stage>
-      )}
-    </Box>
+          </Stage>
+        )}
+      </Box>
+    </Panel>
   );
 }

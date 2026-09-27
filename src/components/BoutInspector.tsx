@@ -13,6 +13,7 @@ import type { ActualValue } from "../shared/types";
 import { ACTUAL_COLORS } from "../shared/types";
 import { frameToTimecodeMs, timecodeToFrame } from "../lib/timecode";
 import { getBoutById, useStore } from "../store";
+import { Panel } from "./Panel";
 
 const ACTUAL_OPTIONS: { label: string; value: ActualValue }[] = [
   { label: "TRUE_POS — IS behaviour", value: 1 },
@@ -37,9 +38,11 @@ export function BoutInspector(): React.ReactElement {
 
   if (!bout) {
     return (
-      <Text c="dark.4" size="xs" p="sm">
-        Select a bout to inspect
-      </Text>
+      <Panel p="xs">
+        <Text c="dark.4" size="xs">
+          Select a bout to inspect
+        </Text>
+      </Panel>
     );
   }
 
@@ -88,134 +91,143 @@ export function BoutInspector(): React.ReactElement {
   };
 
   return (
-    <Stack gap="xs" p="xs" style={{ height: "100%", overflowY: "auto" }}>
-      <Group gap="xs">
-        <Text fw={600} ff="monospace" size="sm" c={ACTUAL_COLORS[bout.actual]}>
-          {bout.behav}
-        </Text>
-        <Text size="sm" c="dimmed">
-          #{bout.id}
-        </Text>
-      </Group>
+    <Panel p="xs">
+      <Stack gap="xs">
+        <Group gap="xs">
+          <Text
+            fw={600}
+            ff="monospace"
+            size="sm"
+            c={ACTUAL_COLORS[bout.actual]}
+          >
+            {bout.behav}
+          </Text>
+          <Text size="sm" c="dimmed">
+            #{bout.id}
+          </Text>
+        </Group>
 
-      <Paper withBorder p="xs" bg="dark.7">
-        <Text size="xs" c="dark.2" mb={4}>
-          Scoring
-        </Text>
-        <Radio.Group
-          value={bout.actual.toString()}
-          onChange={(v) => updateBoutActual(bout.id, Number(v) as ActualValue)}
-        >
-          <Stack gap={4}>
-            {ACTUAL_OPTIONS.map(({ label, value }) => (
-              <Radio
-                key={value}
-                value={value.toString()}
-                label={label}
-                color={ACTUAL_COLORS[value]}
-                size="xs"
-              />
-            ))}
-          </Stack>
-        </Radio.Group>
-      </Paper>
-
-      {Object.keys(bout.userDefined).length > 0 && (
         <Paper withBorder p="xs" bg="dark.7">
           <Text size="xs" c="dark.2" mb={4}>
-            Sub-behaviours
+            Scoring
           </Text>
-          <Stack gap={4}>
-            {Object.entries(bout.userDefined).map(([key, val]) => (
-              <Checkbox
-                key={key}
-                label={key}
-                checked={val === 1}
-                onChange={(e) =>
-                  updateBoutUserDefined(
-                    bout.id,
-                    key,
-                    e.currentTarget.checked ? 1 : 0,
-                  )
-                }
-                color="green"
-                size="xs"
-              />
-            ))}
-          </Stack>
+          <Radio.Group
+            value={bout.actual.toString()}
+            onChange={(v) =>
+              updateBoutActual(bout.id, Number(v) as ActualValue)
+            }
+          >
+            <Stack gap={4}>
+              {ACTUAL_OPTIONS.map(({ label, value }) => (
+                <Radio
+                  key={value}
+                  value={value.toString()}
+                  label={label}
+                  color={ACTUAL_COLORS[value]}
+                  size="xs"
+                />
+              ))}
+            </Stack>
+          </Radio.Group>
         </Paper>
-      )}
 
-      <Paper withBorder p="xs" bg="dark.7">
-        <Text size="xs" c="dark.2" mb={4}>
-          Edit range
-        </Text>
-
-        <Text size="xs" c="dimmed" mb={2}>
-          Start
-        </Text>
-        <Group gap="xs" mb="xs" wrap="nowrap">
-          <NumberInput
-            placeholder="Frame"
-            value={editStart}
-            onChange={handleFrameStart}
-            min={0}
-            max={numFrames - 1}
-            allowDecimal={false}
-            allowNegative={false}
-            hideControls
-            size="xs"
-            style={{ flex: 1 }}
-          />
-          <TextInput
-            placeholder="M:SS.mmm"
-            value={frameToTimecodeMs(editStart, fps)}
-            onChange={(e) => handleTcStart(e.currentTarget.value)}
-            size="xs"
-            style={{ flex: 1 }}
-          />
-        </Group>
-
-        <Text size="xs" c="dimmed" mb={2}>
-          Stop
-        </Text>
-        <Group gap="xs" mb="xs" wrap="nowrap">
-          <NumberInput
-            placeholder="Frame"
-            value={editStop}
-            onChange={handleFrameStop}
-            min={0}
-            max={numFrames - 1}
-            allowDecimal={false}
-            allowNegative={false}
-            hideControls
-            size="xs"
-            style={{ flex: 1 }}
-          />
-          <TextInput
-            placeholder="M:SS.mmm"
-            value={frameToTimecodeMs(editStop, fps)}
-            onChange={(e) => handleTcStop(e.currentTarget.value)}
-            size="xs"
-            style={{ flex: 1 }}
-          />
-        </Group>
-
-        {!rangeValid && (
-          <Text size="xs" c="red" mb="xs">
-            Stop must be at least start
-          </Text>
+        {Object.keys(bout.userDefined).length > 0 && (
+          <Paper withBorder p="xs" bg="dark.7">
+            <Text size="xs" c="dark.2" mb={4}>
+              Sub-behaviours
+            </Text>
+            <Stack gap={4}>
+              {Object.entries(bout.userDefined).map(([key, val]) => (
+                <Checkbox
+                  key={key}
+                  label={key}
+                  checked={val === 1}
+                  onChange={(e) =>
+                    updateBoutUserDefined(
+                      bout.id,
+                      key,
+                      e.currentTarget.checked ? 1 : 0,
+                    )
+                  }
+                  color="green"
+                  size="xs"
+                />
+              ))}
+            </Stack>
+          </Paper>
         )}
 
-        <Group justify="flex-end" gap="xs">
-          <Button variant="default" size="xs" onClick={handleReset}>
-            Reset
-          </Button>
-          <Button size="xs" onClick={handleUpdate} disabled={!rangeValid}>
-            Update
-          </Button>
-        </Group>
-      </Paper>
-    </Stack>
+        <Paper withBorder p="xs" bg="dark.7">
+          <Text size="xs" c="dark.2" mb={4}>
+            Edit range
+          </Text>
+
+          <Text size="xs" c="dimmed" mb={2}>
+            Start
+          </Text>
+          <Group gap="xs" mb="xs" wrap="nowrap">
+            <NumberInput
+              placeholder="Frame"
+              value={editStart}
+              onChange={handleFrameStart}
+              min={0}
+              max={numFrames - 1}
+              allowDecimal={false}
+              allowNegative={false}
+              hideControls
+              size="xs"
+              style={{ flex: 1 }}
+            />
+            <TextInput
+              placeholder="M:SS.mmm"
+              value={frameToTimecodeMs(editStart, fps)}
+              onChange={(e) => handleTcStart(e.currentTarget.value)}
+              size="xs"
+              style={{ flex: 1 }}
+            />
+          </Group>
+
+          <Text size="xs" c="dimmed" mb={2}>
+            Stop
+          </Text>
+          <Group gap="xs" mb="xs" wrap="nowrap">
+            <NumberInput
+              placeholder="Frame"
+              value={editStop}
+              onChange={handleFrameStop}
+              min={0}
+              max={numFrames - 1}
+              allowDecimal={false}
+              allowNegative={false}
+              hideControls
+              size="xs"
+              style={{ flex: 1 }}
+            />
+            <TextInput
+              placeholder="M:SS.mmm"
+              value={frameToTimecodeMs(editStop, fps)}
+              onChange={(e) => handleTcStop(e.currentTarget.value)}
+              size="xs"
+              style={{ flex: 1 }}
+            />
+          </Group>
+
+          {!rangeValid && (
+            <Text size="xs" c="red" mb="xs">
+              Stop must be at least start
+            </Text>
+          )}
+
+          <Group justify="flex-end" gap="xs">
+            <Button variant="default" size="xs" onClick={handleReset}>
+              Reset
+            </Button>
+            <Button size="xs" onClick={handleUpdate} disabled={!rangeValid}>
+              Update
+            </Button>
+          </Group>
+        </Paper>
+      </Stack>
+    </Panel>
   );
 }
