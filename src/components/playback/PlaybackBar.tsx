@@ -1,7 +1,6 @@
 import { Group, Box, Text } from "@mantine/core";
 import { PlaybackControls } from "./PlaybackControls";
 import { TimelineSlider } from "./TimelineSlider";
-import { PlaybackSettingsPopover } from "./PlaybackSettingsPopover";
 import { frameToTimecode } from "../../lib/timecode";
 import { useStore } from "../../store";
 
@@ -29,8 +28,6 @@ export function PlaybackBar() {
       <Text size="xs" c="dimmed" ff="monospace" w={36} ta="right">
         {timeStr}
       </Text>
-
-      <PlaybackSettingsPopover />
     </Group>
   );
 }

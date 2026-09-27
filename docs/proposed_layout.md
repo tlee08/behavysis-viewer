@@ -1,27 +1,9 @@
-## Current Layout
-
-roughly
-
-|--------------------------------------------------------------|
-| Menu bar                                                     |
-|--------------------------------------------------------------|
-| Video                    + Tab selector (bouts, features)    |
-| (scales out of area)     +-----------------------------------|
-|                          + BoutsPanel                        |
-|                          +                                   |
-|                          +                                   |
-|                          +                                   |
-|                          +                                   |
-|+++++++++++++++++++++++++++                                   |
-| BoutTimeline             +-----------------------------------|
-|                          + Bout Inspect                      |
-|--------------------------+                                   |
-| FeaturesGraph            +                                   |
-|--------------------------------------------------------------|
-
-Note: "+" means splitter (right now react-resizable-panels Separator)
-
 ## Proposed Layout
+
+3 tabs:
+* Bouts
+* Classifier (new tab, which has ClassifierPanel, which just simply has "show prediction probabilities" toggle)
+* Features
 
 (when in bouts tab)
 |--------------------------------------------------------------|
@@ -38,11 +20,16 @@ Note: "+" means splitter (right now react-resizable-panels Separator)
 |                          +                                   |
 |                          +                                   |
 |++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++|
-| BoutTimeline                                                 |
-|                                                              |
-|++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++|
-| FeaturesGraph                                                |
-|                                                              |
+|--------------------------------------------------------------|
+|| BoutTimeline                                               ||
+||                                                            ||
+||++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++||
+|| ClassifierGraph                                            ||
+||                                                            ||
+||++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++||
+|| FeaturesGraph                                              ||
+||                                                            ||
+|--------------------------------------------------------------|
 |--------------------------------------------------------------|
 
 (when in features tab)
@@ -60,20 +47,24 @@ Note: "+" means splitter (right now react-resizable-panels Separator)
 |                          +                                   |
 |                          +                                   |
 |++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++|
-| BoutTimeline                                                 |
-|                                                              |
-|++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++|
-| FeaturesGraph                                                |
-|                                                              |
+|--------------------------------------------------------------|
+|| BoutTimeline                                               ||
+||                                                            ||
+||++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++||
+|| ClassifierGraph                                            ||
+||                                                            ||
+||++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++||
+|| FeaturesGraph                                              ||
+||                                                            ||
+|--------------------------------------------------------------|
 |--------------------------------------------------------------|
 
 
 
 Note: "+" means Splitter (Mantine)
-We need to reconfigure the layout and to change UI elements to Mantine.
-Convert all UI elements to be Mantine items.
-When I say Video (scales out of area), this means depending on the dimensions, some of the video goes out of the container. I want (scales in black sides) meaning that we keep the original aspect ratio and don't go out of the container. Any space on the sides should be black (or the background colour/transparent).
+For UI, use Mantine components
+The ClassifierGraph ONLY shows when the "Show prediction probabilities" is toggled on. (which is on the ClassifierPanel page). Is hidden otherwise. The predictions come from the equivalent parquet file in "6_behaviours_predicted". Look at "../example_behavysis_projects/test_data_hpw" for an idea of an example project/experiment structure and the table schema for the 6_behaviours_predicted. The logic for creating this table and schema is also in ../behavysis/src/behavysis/schemas/schemas.
+The FeaturesGraph ONLY shows when at least one feature is selected to view. Is hidden otherwise.
 Use mantine skills, mantine mcp, context7, tavily, karpathy guidelines, simple english
 Clean up the code to be simpler and uncomplicated.
 Do NOT touch the underlying video and time-sync-components logic.
-

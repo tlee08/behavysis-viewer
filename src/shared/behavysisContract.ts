@@ -40,6 +40,9 @@ export const COLS = {
   x: "x",
   y: "y",
   likelihood: "likelihood",
+  behaviour: "behaviour",
+  prob: "prob",
+  pred: "pred",
 } as const;
 
 // ─── `actual` scoring enum (constants/data_names.py) ────────────────────────

@@ -37,6 +37,13 @@ export interface KeypointData {
   likelihood: Float32Array[];
 }
 
+// Classifier predictions, one probability curve per behaviour.
+// prob[behaviour] is indexed relative to config.startFrame.
+export interface PredictedData {
+  behaviours: string[];
+  prob: Record<string, Float64Array>;
+}
+
 export interface AppConfig {
   fps: number;
   numFrames: number;
@@ -53,5 +60,13 @@ export interface ExperimentPaths {
   behavsPath: string;
   keypointsPath: string;
   featuresDir: string;
+  predictedPath: string;
   name: string;
+}
+
+export interface FileDiagnostic {
+  label: string;
+  path: string;
+  loaded: boolean;
+  detail?: string;
 }

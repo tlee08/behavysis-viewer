@@ -11,6 +11,7 @@ import type {
   Bout,
   KeypointData,
   KeypointDef,
+  PredictedData,
 } from "../shared/types";
 import { generateColors } from "./colors";
 
@@ -184,6 +185,45 @@ export async function loadFeatureData(
     data[col] = arr;
   }
   return data;
+}
+
+// 6_behaviour_predicted: long-form (frame, behaviour, prob, pred).
+// Returns one probability array per behaviour, indexed relative to startFrame.
+export async function loadPredictedParquet(
+  buffer: Uint8Array,
+  startFrame: number,
+): Promise<PredictedData> {
+  const rows = await readRows(buffer);
+  if (rows.length === 0) return { behaviours: [], prob: {} };
+
+  const groups = new Map<string, { frames: number[]; probs: number[] }>();
+  let maxFrame = startFrame;
+  for (const r of rows) {
+    const behav = String(r[COLS.behaviour]);
+    const f = Number(r[COLS.frame]);
+    if (f > maxFrame) maxFrame = f;
+    let g = groups.get(behav);
+    if (!g) {
+      g = { frames: [], probs: [] };
+      groups.set(behav, g);
+    }
+    g.frames.push(f);
+    g.probs.push(Number(r[COLS.prob]));
+  }
+
+  const length = maxFrame - startFrame + 1;
+  const behaviours = [...groups.keys()].sort();
+  const prob: Record<string, Float64Array> = {};
+  for (const behav of behaviours) {
+    const g = groups.get(behav)!;
+    const arr = new Float64Array(length).fill(NaN);
+    for (let i = 0; i < g.frames.length; i++) {
+      arr[g.frames[i] - startFrame] = g.probs[i];
+    }
+    prob[behav] = arr;
+  }
+
+  return { behaviours, prob };
 }
 
 // Write scored bouts back to 7_behaviour_scored wide format

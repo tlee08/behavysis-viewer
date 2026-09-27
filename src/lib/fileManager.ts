@@ -39,6 +39,7 @@ export function resolveExperimentPaths(configPath: string): ExperimentPaths {
     keypointsPath: joinFn(root, STAGE_DIRS.preprocessed, `${name}.parquet`),
     featuresDir: joinFn(root, STAGE_DIRS.featuresExtracted),
     behavsPath: joinFn(root, STAGE_DIRS.behaviourScored, `${name}.parquet`),
+    predictedPath: joinFn(root, STAGE_DIRS.behaviourPredicted, `${name}.parquet`),
   };
 }
 

@@ -7,13 +7,19 @@ import { FrameReader, type FrameMetadata } from "../lib/frameReader";
 import {
   loadBehavParquet,
   loadKeypointsParquet,
+  loadPredictedParquet,
   saveBehavParquet,
 } from "../lib/parquetIO";
 import {
   parseExperimentConfig,
   parseMetadata,
 } from "../shared/behavysisContract";
-import type { Bout, KeypointData } from "../shared/types";
+import type {
+  Bout,
+  FileDiagnostic,
+  KeypointData,
+  PredictedData,
+} from "../shared/types";
 import { useStore } from "../store";
 
 export function useExperimentIO() {
@@ -32,6 +38,8 @@ export function useExperimentIO() {
     loadExperiment,
     setVideoMetadata,
     setFeatureSets,
+    setPredicted,
+    setDiagnostics,
   } = useStore();
 
   useEffect(() => {
@@ -50,6 +58,10 @@ export function useExperimentIO() {
     try {
       setStatus("Loading…");
       const expPaths = resolveExperimentPaths(configPath);
+      const diags: FileDiagnostic[] = [
+        { label: "Config", path: expPaths.configPath, loaded: true },
+        { label: "Metadata", path: expPaths.metadataPath, loaded: true },
+      ];
 
       const [metadataText, configText] = await Promise.all([
         readTextFile(expPaths.metadataPath),
@@ -69,8 +81,19 @@ export function useExperimentIO() {
             .map((e) => e.name)
             .sort(),
         );
+        diags.push({
+          label: "Features",
+          path: expPaths.featuresDir,
+          loaded: true,
+        });
       } catch (err) {
         console.warn("Cannot list features dir:", String(err));
+        diags.push({
+          label: "Features",
+          path: expPaths.featuresDir,
+          loaded: false,
+          detail: String(err),
+        });
       }
 
       const videoBytes = await readFile(expPaths.videoPath);
@@ -81,6 +104,7 @@ export function useExperimentIO() {
       setReader(newReader);
       setMetadata(newReader.metadata);
       setVideoMetadata(newReader.metadata);
+      diags.push({ label: "Video", path: expPaths.videoPath, loaded: true });
 
       let parsedBouts: Bout[] = [];
       try {
@@ -89,16 +113,60 @@ export function useExperimentIO() {
           new Uint8Array(behavBytes),
           expConfig.classifyBehaviour,
         );
+        diags.push({
+          label: "Scored bouts",
+          path: expPaths.behavsPath,
+          loaded: true,
+        });
       } catch (err) {
         console.warn("No behaviour bouts file:", String(err));
+        diags.push({
+          label: "Scored bouts",
+          path: expPaths.behavsPath,
+          loaded: false,
+          detail: String(err),
+        });
       }
 
       let keypoints: KeypointData | null = null;
       try {
         const kptBytes = await readFile(expPaths.keypointsPath);
         keypoints = await loadKeypointsParquet(new Uint8Array(kptBytes));
+        diags.push({
+          label: "Keypoints",
+          path: expPaths.keypointsPath,
+          loaded: true,
+        });
       } catch (err) {
         console.warn("No keypoints file:", String(err));
+        diags.push({
+          label: "Keypoints",
+          path: expPaths.keypointsPath,
+          loaded: false,
+          detail: String(err),
+        });
+      }
+
+      let predicted: PredictedData | null = null;
+      try {
+        const predBytes = await readFile(expPaths.predictedPath);
+        predicted = await loadPredictedParquet(
+          new Uint8Array(predBytes),
+          appConfig.startFrame,
+        );
+        diags.push({
+          label: "Predicted behaviours",
+          path: expPaths.predictedPath,
+          loaded: true,
+        });
+      } catch (err) {
+        console.warn("No predicted behaviours file:", String(err));
+        diags.push({
+          label: "Predicted behaviours",
+          path: expPaths.predictedPath,
+          loaded: false,
+          detail: String(err),
+        });
       }
 
       loadExperiment(
@@ -112,11 +180,14 @@ export function useExperimentIO() {
       );
 
       setFeatureSets(featureSets);
+      setPredicted(predicted);
+      setDiagnostics(diags);
       setStatus(`Opened: ${expPaths.name}`);
     } catch (err) {
       setStatus(`Error: ${String(err)}`);
+      setDiagnostics([]);
     }
-  }, [loadExperiment, setVideoMetadata, setFeatureSets]);
+  }, [loadExperiment, setVideoMetadata, setFeatureSets, setPredicted, setDiagnostics]);
 
   const save = useCallback(async () => {
     if (!paths || !config) {

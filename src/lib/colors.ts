@@ -13,6 +13,19 @@ export const COLOR_MODES: { value: ColorMode; label: string }[] = [
   { value: "bodypart", label: "Body part" },
 ];
 
+export const LINE_COLORS = [
+  "#22c55e",
+  "#ef4444",
+  "#3b82f6",
+  "#eab308",
+  "#a855f7",
+  "#06b6d4",
+  "#f97316",
+  "#ec4899",
+  "#84cc16",
+  "#6366f1",
+];
+
 export const COLOURMAP_NAMES = [
   "hue",
   "viridis",

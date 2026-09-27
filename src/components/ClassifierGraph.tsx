@@ -8,19 +8,11 @@ import { useStore } from "../store";
 
 const MARGIN = { left: 30, right: 30, bottom: 20 };
 
-export function FeatureGraph(): React.ReactElement {
+export function ClassifierGraph(): React.ReactElement {
   const { ref, width, height } = useElementSize<HTMLDivElement>();
   const theme = useMantineTheme();
 
-  const {
-    featureData,
-    selectedFeatureColumns,
-    featureYGlobal,
-    featureScaleMode,
-    currentFrame,
-    config,
-  } = useStore();
-
+  const { predicted, selectedBehaviours, currentFrame, config } = useStore();
   const [startFrame, endFrame] = useVisibleRange();
   const fps = config!.fps;
   const dataOffset = config!.startFrame;
@@ -45,93 +37,36 @@ export function FeatureGraph(): React.ReactElement {
     MARGIN.left + ((sec - xMinSec) / (xMaxSec - xMinSec)) * chartWidth;
 
   const show =
-    endFrame > startFrame && selectedFeatureColumns.length > 0 && width > 0;
+    predicted !== null &&
+    selectedBehaviours.length > 0 &&
+    endFrame > startFrame &&
+    width > 0;
 
   const lines: { color: string; points: number[]; label: string }[] = [];
-  let sharedMin = Infinity;
-  let sharedMax = -Infinity;
-
-  if (show && featureScaleMode === "raw") {
-    for (const col of selectedFeatureColumns) {
-      const raw = featureData[col];
-      if (!raw) continue;
-
-      const visStart = Math.max(startFrame, dataOffset);
-      const visEnd = Math.min(endFrame, dataOffset + raw.length - 1);
-      const src = featureYGlobal
-        ? raw
-        : visEnd >= visStart
-          ? raw.subarray(visStart - dataOffset, visEnd + 1 - dataOffset)
-          : new Float64Array(0);
-
-      for (let i = 0; i < src.length; i++) {
-        const v = src[i];
-        if (v < sharedMin) sharedMin = v;
-        if (v > sharedMax) sharedMax = v;
-      }
-    }
-  }
-  const sharedRange = sharedMax - sharedMin || 1;
 
   if (show) {
-    for (let ci = 0; ci < selectedFeatureColumns.length; ci++) {
-      const col = selectedFeatureColumns[ci];
-      const raw = featureData[col];
-      if (!raw) continue;
-
-      const visStart = Math.max(startFrame, dataOffset);
-      const visEnd = Math.min(endFrame, dataOffset + raw.length - 1);
-
+    const visStart = Math.max(startFrame, dataOffset);
+    selectedBehaviours.forEach((behav, i) => {
+      const arr = predicted.prob[behav];
+      if (!arr) return;
+      const visEnd = Math.min(endFrame, dataOffset + arr.length - 1);
       if (visEnd < visStart) {
-        lines.push({ color: LINE_COLORS[ci % LINE_COLORS.length], points: [], label: col });
-        continue;
+        lines.push({ color: LINE_COLORS[i % LINE_COLORS.length], points: [], label: behav });
+        return;
       }
-
-      const slice = raw.subarray(visStart - dataOffset, visEnd + 1 - dataOffset);
-
-      let cMin = Infinity;
-      let cMax = -Infinity;
-      let cSum = 0;
-      let cCount = 0;
-      const src = featureYGlobal ? raw : slice;
-      for (let i = 0; i < src.length; i++) {
-        const v = src[i];
-        if (v < cMin) cMin = v;
-        if (v > cMax) cMax = v;
-        cSum += v;
-        cCount++;
-      }
-      const cMean = cSum / cCount;
-      let cVar = 0;
-      for (let i = 0; i < src.length; i++) {
-        cVar += (src[i] - cMean) ** 2;
-      }
-      const cStd = Math.sqrt(cVar / cCount);
-      const cRange = cMax - cMin || 1;
 
       const points: number[] = [];
-      for (let i = 0; i < slice.length; i++) {
-        const x = toX(visStart + i);
-        let y: number;
-
-        if (featureScaleMode === "raw") {
-          y = height - ((slice[i] - sharedMin) / sharedRange) * height;
-        } else if (featureScaleMode === "minmax") {
-          y = height - ((slice[i] - cMin) / cRange) * height;
-        } else {
-          const z = cStd > 0 ? (slice[i] - cMean) / cStd : 0;
-          const clamped = Math.max(-3, Math.min(3, z));
-          y = height - ((clamped + 3) / 6) * height;
-        }
-
-        points.push(x, y);
+      for (let f = visStart; f <= visEnd; f++) {
+        const v = arr[f - dataOffset];
+        if (Number.isNaN(v)) continue;
+        points.push(toX(f), height - v * height);
       }
-
-      lines.push({ color: LINE_COLORS[ci % LINE_COLORS.length], points, label: col });
-    }
+      lines.push({ color: LINE_COLORS[i % LINE_COLORS.length], points, label: behav });
+    });
   }
 
   const curX = show ? toX(currentFrame) : 0;
+  const thresholdY = height * 0.5;
 
   return (
     <Box ref={ref} w="100%" h="100%" bg="#1a1a2e">
@@ -159,6 +94,13 @@ export function FeatureGraph(): React.ReactElement {
               ]}
               stroke={theme.colors.dark[4]}
               strokeWidth={1}
+            />
+            <Line
+              points={[MARGIN.left, thresholdY, MARGIN.left + chartWidth, thresholdY]}
+              stroke={theme.colors.dark[4]}
+              strokeWidth={1}
+              dash={[4, 4]}
+              listening={false}
             />
           </Layer>
           <Layer>

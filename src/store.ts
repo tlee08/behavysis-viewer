@@ -6,7 +6,9 @@ import type {
   AppConfig,
   Bout,
   ExperimentPaths,
+  FileDiagnostic,
   KeypointData,
+  PredictedData,
 } from "./shared/types";
 
 interface AppState {
@@ -39,6 +41,10 @@ interface AppState {
   featureSets: string[];
   activeFeatureSet: string | null;
   classifyBehaviour: Record<string, string[]>;
+
+  selectedBehaviours: string[];
+  predicted: PredictedData | null;
+  diagnostics: FileDiagnostic[];
 
   selectedBoutId: number | null;
 
@@ -74,6 +80,10 @@ interface AppState {
   setFeatureSets: (sets: string[]) => void;
   setActiveFeatureSet: (name: string | null) => void;
   setClassifyBehaviour: (cb: Record<string, string[]>) => void;
+
+  setSelectedBehaviours: (behaviours: string[]) => void;
+  setPredicted: (data: PredictedData | null) => void;
+  setDiagnostics: (diagnostics: FileDiagnostic[]) => void;
 
   selectBout: (id: number | null) => void;
   interimBoutEdit: {
@@ -120,6 +130,10 @@ export const useStore = create<AppState>((set, get) => ({
   activeFeatureSet: null,
   classifyBehaviour: {},
 
+  selectedBehaviours: [],
+  predicted: null,
+  diagnostics: [],
+
   selectedBoutId: null,
 
   loadExperiment: (
@@ -145,6 +159,9 @@ export const useStore = create<AppState>((set, get) => ({
       selectedFeatureColumns: [],
       featureData: {},
       activeFeatureSet: null,
+      selectedBehaviours: [],
+      predicted: null,
+      diagnostics: [],
     });
   },
 
@@ -172,6 +189,10 @@ export const useStore = create<AppState>((set, get) => ({
   setActiveFeatureSet: (activeFeatureSet) =>
     set({ activeFeatureSet, selectedFeatureColumns: [], featureData: {} }),
   setClassifyBehaviour: (classifyBehaviour) => set({ classifyBehaviour }),
+
+  setSelectedBehaviours: (selectedBehaviours) => set({ selectedBehaviours }),
+  setPredicted: (predicted) => set({ predicted }),
+  setDiagnostics: (diagnostics) => set({ diagnostics }),
 
   selectBout: (selectedBoutId) => {
     if (selectedBoutId === null) {
