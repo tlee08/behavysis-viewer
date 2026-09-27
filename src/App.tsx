@@ -1,5 +1,4 @@
-import { Box, Tabs, Text } from "@mantine/core";
-import { Group, Panel, Separator } from "react-resizable-panels";
+import { Box, Splitter, Tabs, Text } from "@mantine/core";
 import { BoutInspector } from "./components/BoutInspector";
 import { BoutsPanel } from "./components/BoutsPanel";
 import { BoutTimeline } from "./components/BoutTimeline";
@@ -37,47 +36,10 @@ export default function App(): React.ReactElement {
           <Text c="dimmed">{status}</Text>
         </Box>
       ) : (
-        <Group orientation="horizontal" style={{ flex: 1, overflow: "hidden" }}>
-          <Panel defaultSize={60} minSize={20}>
-            <Box
-              style={{
-                display: "flex",
-                flexDirection: "column",
-                height: "100%",
-              }}
-            >
-              <Box style={{ flexShrink: 0 }}>
-                <VideoPane reader={reader} metadata={metadata} />
-              </Box>
-              <PlaybackBar />
-              <Box style={{ flex: 1, overflow: "auto" }}>
-                <BoutTimeline height={120} />
-              </Box>
-              <FeatureGraph height={90} />
-            </Box>
-          </Panel>
-          <Separator
-            style={{ width: 4, background: "var(--mantine-color-dark-5)" }}
-          />
-          <Panel defaultSize={40} minSize={20}>
-            <Tabs
-              defaultValue="bouts"
-              style={{
-                height: "100%",
-                display: "flex",
-                flexDirection: "column",
-              }}
-              styles={{
-                root: { height: "100%" },
-                panel: { flex: 1, overflow: "hidden" },
-              }}
-            >
-              <Tabs.List>
-                <Tabs.Tab value="bouts">Behaviour Bouts</Tabs.Tab>
-                <Tabs.Tab value="features">Features</Tabs.Tab>
-              </Tabs.List>
-
-              <Tabs.Panel value="bouts">
+        <Splitter orientation="vertical" style={{ flex: 1, minHeight: 0 }}>
+          <Splitter.Pane defaultSize={100} min={20}>
+            <Splitter orientation="horizontal" h="100%">
+              <Splitter.Pane defaultSize={60} min={20}>
                 <Box
                   style={{
                     display: "flex",
@@ -85,28 +47,56 @@ export default function App(): React.ReactElement {
                     height: "100%",
                   }}
                 >
-                  <Box style={{ flex: 1, overflow: "hidden" }}>
-                    <BoutsPanel />
-                  </Box>
-                  <Box
-                    bg="dark.7"
-                    style={{
-                      flexShrink: 0,
-                      minHeight: 140,
-                      borderTop: "1px solid var(--mantine-color-dark-6)",
-                    }}
-                  >
-                    <BoutInspector />
-                  </Box>
+                  <VideoPane reader={reader} metadata={metadata} />
+                  <PlaybackBar />
                 </Box>
-              </Tabs.Panel>
+              </Splitter.Pane>
 
-              <Tabs.Panel value="features" style={{ height: "100%" }}>
-                <FeaturesPanel />
-              </Tabs.Panel>
-            </Tabs>
-          </Panel>
-        </Group>
+              <Splitter.Pane defaultSize={40} min={20}>
+                <Tabs
+                  defaultValue="bouts"
+                  h="100%"
+                  styles={{
+                    root: {
+                      height: "100%",
+                      display: "flex",
+                      flexDirection: "column",
+                    },
+                    panel: { flex: 1, minHeight: 0 },
+                  }}
+                >
+                  <Tabs.List>
+                    <Tabs.Tab value="bouts">Behaviour Bouts</Tabs.Tab>
+                    <Tabs.Tab value="features">Features</Tabs.Tab>
+                  </Tabs.List>
+
+                  <Tabs.Panel value="bouts">
+                    <Splitter orientation="vertical" h="100%">
+                      <Splitter.Pane defaultSize={70} min={30}>
+                        <BoutsPanel />
+                      </Splitter.Pane>
+                      <Splitter.Pane defaultSize={30} min="120px">
+                        <BoutInspector />
+                      </Splitter.Pane>
+                    </Splitter>
+                  </Tabs.Panel>
+
+                  <Tabs.Panel value="features">
+                    <FeaturesPanel />
+                  </Tabs.Panel>
+                </Tabs>
+              </Splitter.Pane>
+            </Splitter>
+          </Splitter.Pane>
+
+          <Splitter.Pane defaultSize="120px" min="80px">
+            <BoutTimeline />
+          </Splitter.Pane>
+
+          <Splitter.Pane defaultSize="90px" min="60px">
+            <FeatureGraph />
+          </Splitter.Pane>
+        </Splitter>
       )}
     </Box>
   );

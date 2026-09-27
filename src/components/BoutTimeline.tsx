@@ -1,22 +1,18 @@
 import { Box, useMantineTheme } from "@mantine/core";
 import type Konva from "konva";
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo } from "react";
 import { Layer, Line, Rect, Stage, Text } from "react-konva";
 import { ACTUAL_COLORS } from "../shared/types";
+import { useElementSize } from "../hooks/useElementSize";
 import { useVisibleRange } from "../hooks/useVisibleRange";
 import { useStore } from "../store";
-
-interface Props {
-  height?: number;
-}
 
 const ROW_HEIGHT = 24;
 const HANDLE_W = 8;
 const MARGIN = { top: 4, right: 30, bottom: 24, left: 30 };
 
-export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [stageWidth, setStageWidth] = useState(0);
+export function BoutTimeline(): React.ReactElement {
+  const { ref, width, height } = useElementSize<HTMLDivElement>();
   const theme = useMantineTheme();
 
   const {
@@ -33,20 +29,7 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
   const xMin = visibleRange[0] / fps;
   const xMax = visibleRange[1] / fps;
 
-  useEffect(() => {
-    const node = containerRef.current;
-    if (!node) return;
-    setStageWidth(node.clientWidth);
-    const ro = new ResizeObserver(() => {
-      if (containerRef.current) {
-        setStageWidth(containerRef.current.clientWidth);
-      }
-    });
-    ro.observe(node);
-    return () => ro.disconnect();
-  }, []);
-
-  const chartWidth = stageWidth - MARGIN.left - MARGIN.right;
+  const chartWidth = width - MARGIN.left - MARGIN.right;
   const chartHeight = height - MARGIN.top - MARGIN.bottom;
 
   const behavNames = useMemo(
@@ -157,28 +140,18 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
     [interimBoutEdit, xToFrame, numFrames, setInterimBoutEdit],
   );
 
-  if (bouts.length === 0 || stageWidth === 0) {
-    return (
-      <Box bg="#1a1a2e" style={{ flexShrink: 0 }}>
-        <div
-          ref={containerRef}
-          style={{ width: "100%", height: `${height}px` }}
-        />
-      </Box>
-    );
-  }
-
+  const show = bouts.length > 0 && width > 0 && height > 0;
   const currentTimeX = frameToX(currentFrame);
 
   return (
-    <Box bg="#1a1a2e" style={{ flexShrink: 0 }}>
-      <div ref={containerRef} style={{ width: "100%", height: `${height}px` }}>
-        <Stage width={stageWidth} height={height}>
+    <Box ref={ref} bg="#1a1a2e" w="100%" h="100%">
+      {show && (
+        <Stage width={width} height={height}>
           <Layer>
             <Rect
               x={0}
               y={0}
-              width={stageWidth}
+              width={width}
               height={height}
               fill="#1a1a2e"
             />
@@ -295,7 +268,7 @@ export function BoutTimeline({ height = 120 }: Props): React.ReactElement {
             />
           </Layer>
         </Stage>
-      </div>
+      )}
     </Box>
   );
 }

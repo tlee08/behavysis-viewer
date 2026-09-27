@@ -161,25 +161,21 @@ export function VideoPane({ reader, metadata }: Props) {
   }, [currentFrame, isPlaying, reader, drawFrame, drawKpts]);
 
   if (!metadata) {
-    return (
-      <Box
-        w="100%"
-        style={{ aspectRatio: `${w} / ${h}`, background: "#111" }}
-      />
-    );
+    return <Box style={{ flex: 1, minHeight: 0, background: "#111" }} />;
   }
 
   return (
-    <Box
-      pos="relative"
-      w="100%"
-      style={{ aspectRatio: `${w} / ${h}`, background: "#111" }}
-    >
+    <Box pos="relative" style={{ flex: 1, minHeight: 0, background: "#111" }}>
       <canvas
         ref={videoRef}
         width={w}
         height={h}
-        style={{ width: "100%", height: "100%", display: "block" }}
+        style={{
+          width: "100%",
+          height: "100%",
+          objectFit: "contain",
+          display: "block",
+        }}
       />
       <canvas
         ref={kptRef}
@@ -190,6 +186,7 @@ export function VideoPane({ reader, metadata }: Props) {
           inset: 0,
           width: "100%",
           height: "100%",
+          objectFit: "contain",
           pointerEvents: "none",
         }}
       />

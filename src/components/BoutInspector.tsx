@@ -25,7 +25,6 @@ export function BoutInspector(): React.ReactElement {
     selectedBoutId,
     config,
     numFrames,
-    videoMetadata,
     interimBoutEdit,
     setInterimBoutEdit,
     updateBoutActual,
@@ -89,7 +88,7 @@ export function BoutInspector(): React.ReactElement {
   };
 
   return (
-    <Stack gap="xs" p="xs">
+    <Stack gap="xs" p="xs" style={{ height: "100%", overflowY: "auto" }}>
       <Group gap="xs">
         <Text fw={600} ff="monospace" size="sm" c={ACTUAL_COLORS[bout.actual]}>
           {bout.behav}
