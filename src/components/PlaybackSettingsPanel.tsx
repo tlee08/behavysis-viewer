@@ -13,18 +13,14 @@ import { COLOR_MODES, COLOURMAP_NAMES } from "../lib/colors";
 import { useStore } from "../store";
 import { Panel } from "./Panel";
 
-const SKIP_OPTS = [
-  { value: "1", label: "1s" },
-  { value: "2", label: "2s" },
-  { value: "5", label: "5s" },
-  { value: "10", label: "10s" },
-  { value: "15", label: "15s" },
-  { value: "20", label: "20s" },
-];
+const SKIP_SEC_OPTS = [1, 2, 5, 10, 15, 20, 30].map((n) => ({
+  value: n,
+  label: `${n}s`,
+}));
 
-const FRAME_SKIP_OPTS = [1, 5, 10, 15, 20, 30].map((n) => ({
+const SKIP_FRAME_OPTS = [1, 2, 5, 10, 15, 20, 30].map((n) => ({
   value: String(n),
-  label: `${n} frame${n === 1 ? "" : "s"}`,
+  label: `${n} frames`,
 }));
 
 const FOCUS_OPTS = [
@@ -110,7 +106,7 @@ export function PlaybackSettingsPanel(): React.ReactElement {
           />
           <Select
             label="Skip"
-            data={skipUnit === "seconds" ? SKIP_OPTS : FRAME_SKIP_OPTS}
+            data={skipUnit === "seconds" ? SKIP_SEC_OPTS : SKIP_FRAME_OPTS}
             value={String(skipUnit === "seconds" ? jumpSeconds : jumpFrames)}
             onChange={(v) =>
               v &&
