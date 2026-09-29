@@ -1,6 +1,8 @@
 import { useEffect, useRef } from "react";
 import { getBoutById, getSkipFrames, useStore } from "../store";
 
+const SUBBEHAV_KEYS = ["q", "w", "e", "r", "t", "y"];
+
 interface Props {
   open: () => void;
   save: () => void;
@@ -45,6 +47,25 @@ export function useKeyboardShortcuts({ open, save }: Props): void {
       const fps = config!.fps;
       const skipFrames = getSkipFrames(fps);
 
+      const toggleSubBehav = (index: number) => {
+        if (selectedBoutId === null) return;
+        const bout = getBoutById(selectedBoutId);
+        if (!bout) return;
+        const key = Object.keys(bout.userDefined)[index];
+        if (key === undefined) return;
+        state.updateBoutUserDefined(
+          selectedBoutId,
+          key,
+          bout.userDefined[key] === 1 ? 0 : 1,
+        );
+      };
+
+      const subIdx = SUBBEHAV_KEYS.indexOf(e.key.toLowerCase());
+      if (subIdx !== -1) {
+        toggleSubBehav(subIdx);
+        return;
+      }
+
       switch (e.key) {
         case " ":
           e.preventDefault();
@@ -60,12 +81,7 @@ export function useKeyboardShortcuts({ open, save }: Props): void {
             Math.min(numFrames - 1, currentFrame + skipFrames),
           );
           break;
-        case "k":
-        case "K":
-          state.setShowKeypoints(!showKeypoints);
-          break;
-        case "r":
-        case "R": {
+        case "/": {
           if (selectedBoutId === null) break;
           const bout = getBoutById(selectedBoutId);
           if (bout)
@@ -74,6 +90,10 @@ export function useKeyboardShortcuts({ open, save }: Props): void {
             );
           break;
         }
+        case "k":
+        case "K":
+          state.setShowKeypoints(!showKeypoints);
+          break;
         case "ArrowUp":
         case "ArrowDown": {
           e.preventDefault();
