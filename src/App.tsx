@@ -1,4 +1,5 @@
 import { Box, Splitter, Tabs, Text } from "@mantine/core";
+import { useEffect } from "react";
 import { BoutInspector } from "./components/BoutInspector";
 import { BoutsPanel } from "./components/BoutsPanel";
 import { BoutTimeline } from "./components/BoutTimeline";
@@ -20,7 +21,12 @@ export default function App(): React.ReactElement {
   const config = useStore((s) => s.config);
   const hasPredictions = useStore((s) => s.selectedBehaviours.length > 0);
   const hasFeatures = useStore((s) => s.selectedFeatureColumns.length > 0);
+  const zoom = useStore((s) => s.zoom);
   useKeyboardShortcuts({ open, save });
+
+  useEffect(() => {
+    document.documentElement.style.fontSize = `${16 * zoom}px`;
+  }, [zoom]);
 
   return (
     <Box

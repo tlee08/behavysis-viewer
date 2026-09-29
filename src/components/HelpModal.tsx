@@ -5,6 +5,9 @@ const MOD_KEY = navigator.userAgent.includes("Mac") ? "⌘" : "Ctrl";
 const SHORTCUTS: { keys: string[]; label: string }[] = [
   { keys: [MOD_KEY, "O"], label: "Open experiment" },
   { keys: [MOD_KEY, "S"], label: "Save" },
+  { keys: [MOD_KEY, "-"], label: "Zoom out" },
+  { keys: [MOD_KEY, "+"], label: "Zoom in" },
+  { keys: [MOD_KEY, "0"], label: "Reset zoom" },
   { keys: ["Space"], label: "Play / pause" },
   { keys: ["←"], label: "Skip back" },
   { keys: ["→"], label: "Skip forward" },

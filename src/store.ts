@@ -11,6 +11,11 @@ import type {
   PredictedData,
 } from "./shared/types";
 
+const ZOOM_STEP = 0.1;
+const ZOOM_MIN = 0.5;
+const ZOOM_MAX = 2;
+const round1 = (n: number) => Math.round(n * 10) / 10;
+
 interface AppState {
   paths: ExperimentPaths | null;
   config: AppConfig | null;
@@ -34,6 +39,7 @@ interface AppState {
   skipUnit: "seconds" | "frames";
   jumpFrames: number;
   graphWindowSeconds: number;
+  zoom: number;
 
   featureColumns: string[];
   selectedFeatureColumns: string[];
@@ -76,6 +82,9 @@ interface AppState {
   setSkipUnit: (unit: "seconds" | "frames") => void;
   setJumpFrames: (frames: number) => void;
   setGraphWindowSeconds: (seconds: number) => void;
+  zoomIn: () => void;
+  zoomOut: () => void;
+  resetZoom: () => void;
 
   setFeatureColumns: (columns: string[]) => void;
   setSelectedFeatureColumns: (columns: string[]) => void;
@@ -128,6 +137,7 @@ export const useStore = create<AppState>((set, get) => ({
   skipUnit: "seconds",
   jumpFrames: 5,
   graphWindowSeconds: 10,
+  zoom: 1,
 
   featureColumns: [],
   selectedFeatureColumns: [],
@@ -190,6 +200,11 @@ export const useStore = create<AppState>((set, get) => ({
   setSkipUnit: (skipUnit) => set({ skipUnit }),
   setJumpFrames: (jumpFrames) => set({ jumpFrames }),
   setGraphWindowSeconds: (graphWindowSeconds) => set({ graphWindowSeconds }),
+  zoomIn: () =>
+    set((s) => ({ zoom: Math.min(ZOOM_MAX, round1(s.zoom + ZOOM_STEP)) })),
+  zoomOut: () =>
+    set((s) => ({ zoom: Math.max(ZOOM_MIN, round1(s.zoom - ZOOM_STEP)) })),
+  resetZoom: () => set({ zoom: 1 }),
 
   setFeatureColumns: (featureColumns) => set({ featureColumns }),
   setSelectedFeatureColumns: (selectedFeatureColumns) =>

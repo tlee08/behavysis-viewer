@@ -28,6 +28,21 @@ export function useKeyboardShortcuts({ open, save }: Props): void {
           saveRef.current();
           return;
         }
+        if (key === "=" || key === "+") {
+          e.preventDefault();
+          useStore.getState().zoomIn();
+          return;
+        }
+        if (key === "-") {
+          e.preventDefault();
+          useStore.getState().zoomOut();
+          return;
+        }
+        if (key === "0") {
+          e.preventDefault();
+          useStore.getState().resetZoom();
+          return;
+        }
       }
 
       const tag = (e.target as HTMLElement).tagName;
