@@ -1,7 +1,7 @@
 import { useEffect, useRef } from "react";
 import { getBoutById, getSkipFrames, useStore } from "../store";
 
-const SUBBEHAV_KEYS = ["q", "w", "e", "r", "t", "y"];
+const SUBBEHAVIOUR_KEYS = ["q", "w", "e", "r", "t", "y"];
 
 interface Props {
   open: () => void;
@@ -62,22 +62,22 @@ export function useKeyboardShortcuts({ open, save }: Props): void {
       const fps = config!.fps;
       const skipFrames = getSkipFrames(fps);
 
-      const toggleSubBehav = (index: number) => {
+      const toggleSubBehaviour = (index: number) => {
         if (selectedBoutId === null) return;
         const bout = getBoutById(selectedBoutId);
         if (!bout) return;
-        const key = Object.keys(bout.userDefined)[index];
+        const key = Object.keys(bout.subBehaviour)[index];
         if (key === undefined) return;
-        state.updateBoutUserDefined(
+        state.updateBoutSubBehaviour(
           selectedBoutId,
           key,
-          bout.userDefined[key] === 1 ? 0 : 1,
+          bout.subBehaviour[key] === 1 ? 0 : 1,
         );
       };
 
-      const subIdx = SUBBEHAV_KEYS.indexOf(e.key.toLowerCase());
+      const subIdx = SUBBEHAVIOUR_KEYS.indexOf(e.key.toLowerCase());
       if (subIdx !== -1) {
-        toggleSubBehav(subIdx);
+        toggleSubBehaviour(subIdx);
         return;
       }
 

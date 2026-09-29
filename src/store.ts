@@ -10,11 +10,20 @@ import type {
   KeypointData,
   PredictedData,
 } from "./shared/types";
+import { TRUE_POS } from "./shared/types";
 
 const ZOOM_STEP = 0.1;
 const ZOOM_MIN = 0.5;
 const ZOOM_MAX = 2;
 const round1 = (n: number) => Math.round(n * 10) / 10;
+
+const sortBouts = (bouts: Bout[]) =>
+  [...bouts].sort(
+    (a, b) => a.start - b.start || a.behav.localeCompare(b.behav),
+  );
+
+const maxBoutId = (bouts: Bout[]) =>
+  bouts.reduce((m, b) => Math.max(m, b.id), -1);
 
 interface AppState {
   paths: ExperimentPaths | null;
@@ -56,6 +65,7 @@ interface AppState {
 
   selectedBoutId: number | null;
   filterBehaviours: string[];
+  durFrames: number;
 
   loadExperiment: (
     paths: ExperimentPaths,
@@ -101,6 +111,10 @@ interface AppState {
 
   selectBout: (id: number | null) => void;
   setFilterBehaviours: (behaviours: string[]) => void;
+  setDurFrames: (frames: number) => void;
+  splitBout: (id: number, frame: number) => void;
+  deleteBout: (id: number) => void;
+  addBout: (behav: string, start: number, stop: number) => void;
   interimBoutEdit: {
     boutId: number;
     start: number;
@@ -110,7 +124,7 @@ interface AppState {
     edit: { boutId: number; start: number; stop: number } | null,
   ) => void;
   updateBoutActual: (id: number, actual: ActualValue) => void;
-  updateBoutUserDefined: (id: number, key: string, value: ActualValue) => void;
+  updateBoutSubBehaviour: (id: number, key: string, value: ActualValue) => void;
   updateBoutRange: (id: number, start: number, stop: number) => void;
 }
 
@@ -154,6 +168,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   selectedBoutId: null,
   filterBehaviours: [],
+  durFrames: 50,
 
   loadExperiment: (
     paths,
@@ -175,6 +190,7 @@ export const useStore = create<AppState>((set, get) => ({
       currentFrame: 0,
       selectedBoutId: null,
       filterBehaviours: [],
+      durFrames: Math.round(config.fps),
       featureColumns: [],
       selectedFeatureColumns: [],
       featureData: {},
@@ -236,6 +252,65 @@ export const useStore = create<AppState>((set, get) => ({
   },
 
   setFilterBehaviours: (filterBehaviours) => set({ filterBehaviours }),
+  setDurFrames: (durFrames) => set({ durFrames }),
+
+  splitBout: (id, frame) =>
+    set((s) => {
+      const bout = s.bouts.find((b) => b.id === id);
+      if (!bout || frame <= bout.start || frame >= bout.stop) return {};
+      const right: Bout = {
+        id: maxBoutId(s.bouts) + 1,
+        start: frame + 1,
+        stop: bout.stop,
+        behav: bout.behav,
+        actual: bout.actual,
+        subBehaviour: { ...bout.subBehaviour },
+      };
+      return {
+        bouts: sortBouts([
+          ...s.bouts.map((b) => (b.id === id ? { ...b, stop: frame } : b)),
+          right,
+        ]),
+        interimBoutEdit: null,
+      };
+    }),
+
+  deleteBout: (id) =>
+    set((s) => ({
+      bouts: s.bouts.filter((b) => b.id !== id),
+      selectedBoutId: s.selectedBoutId === id ? null : s.selectedBoutId,
+      interimBoutEdit:
+        s.interimBoutEdit?.boutId === id ? null : s.interimBoutEdit,
+    })),
+
+  addBout: (behav, start, stop) =>
+    set((s) => {
+      const clampedStart = Math.max(0, Math.round(start));
+      const clampedStop = Math.min(
+        s.numFrames - 1,
+        Math.max(clampedStart, Math.round(stop)),
+      );
+      const subs = s.classifyBehaviour[behav] ?? [];
+      const subBehaviour: Record<string, ActualValue> = {};
+      for (const sub of subs) subBehaviour[sub] = 0;
+      const bout: Bout = {
+        id: maxBoutId(s.bouts) + 1,
+        start: clampedStart,
+        stop: clampedStop,
+        behav,
+        actual: TRUE_POS,
+        subBehaviour,
+      };
+      return {
+        bouts: sortBouts([...s.bouts, bout]),
+        selectedBoutId: bout.id,
+        interimBoutEdit: {
+          boutId: bout.id,
+          start: bout.start,
+          stop: bout.stop,
+        },
+      };
+    }),
 
   interimBoutEdit: null,
   setInterimBoutEdit: (interimBoutEdit) => set({ interimBoutEdit }),
@@ -245,25 +320,27 @@ export const useStore = create<AppState>((set, get) => ({
       bouts: s.bouts.map((b) => (b.id === id ? { ...b, actual } : b)),
     })),
 
-  updateBoutUserDefined: (id, key, value) =>
+  updateBoutSubBehaviour: (id, key, value) =>
     set((s) => ({
       bouts: s.bouts.map((b) =>
         b.id === id
-          ? { ...b, userDefined: { ...b.userDefined, [key]: value } }
+          ? { ...b, subBehaviour: { ...b.subBehaviour, [key]: value } }
           : b,
       ),
     })),
 
   updateBoutRange: (id, start, stop) =>
     set((s) => ({
-      bouts: s.bouts.map((b) =>
-        b.id === id
-          ? {
-              ...b,
-              start: Math.max(0, start),
-              stop: Math.min(s.numFrames - 1, Math.max(start, stop)),
-            }
-          : b,
+      bouts: sortBouts(
+        s.bouts.map((b) =>
+          b.id === id
+            ? {
+                ...b,
+                start: Math.max(0, start),
+                stop: Math.min(s.numFrames - 1, Math.max(start, stop)),
+              }
+            : b,
+        ),
       ),
     })),
 }));
@@ -286,4 +363,20 @@ export function getSkipFrames(fps: number): number {
   return s.skipUnit === "frames"
     ? s.jumpFrames
     : Math.round(s.jumpSeconds * fps);
+}
+
+export function boutsOverlap(
+  bouts: Bout[],
+  behav: string,
+  start: number,
+  stop: number,
+  excludeId?: number,
+): boolean {
+  return bouts.some(
+    (b) =>
+      b.id !== excludeId &&
+      b.behav === behav &&
+      start <= b.stop &&
+      b.start <= stop,
+  );
 }

@@ -64,7 +64,7 @@ export async function loadBehavParquet(
 
   const allBouts: Bout[] = [];
 
-  const scanColumn = (col: string, subBehavs: string[]) => {
+  const scanColumn = (col: string, subBehaviours: string[]) => {
     let run = -1;
     for (let k = 0; k <= rows.length; k++) {
       const active = k < rows.length && Number(rows[k][col]) !== 0;
@@ -73,9 +73,9 @@ export async function loadBehavParquet(
       } else if (run !== -1) {
         const s = rows[run];
         const e = rows[k - 1];
-        const userDefined: Record<string, ActualValue> = {};
-        for (const sub of subBehavs) {
-          userDefined[sub] = clampActual(Number(s[sub]));
+        const subBehaviour: Record<string, ActualValue> = {};
+        for (const sub of subBehaviours) {
+          subBehaviour[sub] = clampActual(Number(s[sub]));
         }
         allBouts.push({
           id: 0,
@@ -83,15 +83,15 @@ export async function loadBehavParquet(
           stop: Number(e[COLS.frame]),
           behav: col,
           actual: clampActual(Number(s[col])),
-          userDefined,
+          subBehaviour,
         });
         run = -1;
       }
     }
   };
 
-  for (const [behav, subBehavs] of Object.entries(classifyBehaviour)) {
-    scanColumn(behav, subBehavs);
+  for (const [behav, subBehaviours] of Object.entries(classifyBehaviour)) {
+    scanColumn(behav, subBehaviours);
   }
 
   if (rows.length > 0) {
@@ -243,7 +243,7 @@ export function saveBehavParquet(
     if (!behavCols.has(b.behav) && !subCols.has(b.behav)) {
       behavCols.add(b.behav);
     }
-    for (const sub of Object.keys(b.userDefined)) {
+    for (const sub of Object.keys(b.subBehaviour)) {
       if (!behavCols.has(sub) && !subCols.has(sub)) {
         subCols.add(sub);
       }
@@ -269,7 +269,7 @@ export function saveBehavParquet(
       if (f < startFrame || f > stopFrame) continue;
       arr[f - startFrame] = BigInt(b.actual);
     }
-    for (const [sub, val] of Object.entries(b.userDefined)) {
+    for (const [sub, val] of Object.entries(b.subBehaviour)) {
       const subArr = dataArrays[sub];
       if (!subArr) continue;
       for (let f = b.start; f <= b.stop; f++) {

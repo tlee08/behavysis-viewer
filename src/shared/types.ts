@@ -3,7 +3,6 @@
 
 import type { ActualValue } from "./behavysisContract";
 
-export type { ActualValue } from "./behavysisContract";
 export {
   ACTUAL_COLORS,
   FALSE_POS,
@@ -11,6 +10,7 @@ export {
   TRUE_POS,
   UNSURE,
 } from "./behavysisContract";
+export type { ActualValue } from "./behavysisContract";
 
 export interface Bout {
   id: number; // index in the bouts array (reassigned on every parse)
@@ -18,7 +18,7 @@ export interface Bout {
   stop: number; // last frame (inclusive)
   behav: string;
   actual: ActualValue;
-  userDefined: Record<string, ActualValue>;
+  subBehaviour: Record<string, ActualValue>;
 }
 
 export interface KeypointDef {
