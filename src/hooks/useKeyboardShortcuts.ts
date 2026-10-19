@@ -43,6 +43,7 @@ export function useKeyboardShortcuts({ open, save }: Props): void {
           useStore.getState().resetZoom();
           return;
         }
+        return;
       }
 
       const tag = (e.target as HTMLElement).tagName;
@@ -59,7 +60,8 @@ export function useKeyboardShortcuts({ open, save }: Props): void {
         showKeypoints,
         focusSizeSeconds,
       } = state;
-      const fps = config!.fps;
+      if (!config) return;
+      const fps = config.fps;
       const skipFrames = getSkipFrames(fps);
 
       const toggleSubBehaviour = (index: number) => {
@@ -105,6 +107,24 @@ export function useKeyboardShortcuts({ open, save }: Props): void {
             );
           break;
         }
+        case "a":
+        case "A":
+          state.setOpenDialog("add");
+          break;
+        case "s":
+        case "S": {
+          if (selectedBoutId !== null) {
+            const bout = getBoutById(selectedBoutId);
+            if (bout && currentFrame > bout.start && currentFrame < bout.stop) {
+              state.setOpenDialog("split");
+            }
+          }
+          break;
+        }
+        case "d":
+        case "D":
+          if (selectedBoutId !== null) state.setOpenDialog("delete");
+          break;
         case "k":
         case "K":
           state.setShowKeypoints(!showKeypoints);

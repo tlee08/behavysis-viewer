@@ -1,6 +1,6 @@
 import { Box, Button, Group, MultiSelect, Text } from "@mantine/core";
 import { useVirtualizer } from "@tanstack/react-virtual";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef } from "react";
 import { ACTUAL_COLORS } from "../shared/types";
 import { frameToTimecode, frameDurationSec } from "../lib/timecode";
 import { useStore, getBoutById, filterBoutsByBehaviour } from "../store";
@@ -18,10 +18,11 @@ export function BoutsPanel(): React.ReactElement {
     focusSizeSeconds,
     filterBehaviours,
     setFilterBehaviours,
+    openDialog,
+    setOpenDialog,
   } = useStore();
   const fps = useStore((s) => s.config!.fps);
   const parentRef = useRef<HTMLDivElement>(null);
-  const [addOpen, setAddOpen] = useState(false);
 
   const behaviours = useMemo(
     () => [...new Set(bouts.map((b) => b.behav))].sort(),
@@ -75,7 +76,7 @@ export function BoutsPanel(): React.ReactElement {
             <Button
               size="xs"
               variant="default"
-              onClick={() => setAddOpen(true)}
+              onClick={() => setOpenDialog("add")}
             >
               Add
             </Button>
@@ -141,7 +142,9 @@ export function BoutsPanel(): React.ReactElement {
         </Box>
       </Panel>
 
-      {addOpen && <AddBoutModal onClose={() => setAddOpen(false)} />}
+      {openDialog === "add" && (
+        <AddBoutModal onClose={() => setOpenDialog(null)} />
+      )}
     </>
   );
 }

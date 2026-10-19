@@ -8,7 +8,6 @@ import {
   Stack,
   Text,
 } from "@mantine/core";
-import { useState } from "react";
 import { frameToSeconds, secondsToFrame } from "../lib/timecode";
 import type { ActualValue } from "../shared/types";
 import { ACTUAL_COLORS } from "../shared/types";
@@ -36,10 +35,9 @@ export function BoutInspector(): React.ReactElement {
     updateBoutRange,
     splitBout,
     deleteBout,
+    openDialog,
+    setOpenDialog,
   } = useStore();
-
-  const [splitOpen, setSplitOpen] = useState(false);
-  const [deleteOpen, setDeleteOpen] = useState(false);
 
   const bout =
     selectedBoutId !== null ? getBoutById(selectedBoutId) : undefined;
@@ -130,7 +128,7 @@ export function BoutInspector(): React.ReactElement {
               variant="default"
               color="blue"
               disabled={!canSplit}
-              onClick={() => setSplitOpen(true)}
+              onClick={() => setOpenDialog("split")}
             >
               Split
             </Button>
@@ -138,7 +136,7 @@ export function BoutInspector(): React.ReactElement {
               size="xs"
               variant="default"
               color="red"
-              onClick={() => setDeleteOpen(true)}
+              onClick={() => setOpenDialog("delete")}
             >
               Delete
             </Button>
@@ -287,22 +285,22 @@ export function BoutInspector(): React.ReactElement {
       </Panel>
 
       <ConfirmModal
-        opened={splitOpen}
+        opened={openDialog === "split"}
         title="Split bout"
         message={`Split "${bout.behav}" (#${bout.id}) at frame ${currentFrame}?`}
-        onCancel={() => setSplitOpen(false)}
+        onCancel={() => setOpenDialog(null)}
         onConfirm={() => {
-          setSplitOpen(false);
+          setOpenDialog(null);
           splitBout(bout.id, currentFrame);
         }}
       />
       <ConfirmModal
-        opened={deleteOpen}
+        opened={openDialog === "delete"}
         title="Delete bout"
         message={`Delete "${bout.behav}" (#${bout.id})?`}
-        onCancel={() => setDeleteOpen(false)}
+        onCancel={() => setOpenDialog(null)}
         onConfirm={() => {
-          setDeleteOpen(false);
+          setOpenDialog(null);
           deleteBout(bout.id);
         }}
       />

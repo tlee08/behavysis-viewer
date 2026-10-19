@@ -66,6 +66,7 @@ interface AppState {
   selectedBoutId: number | null;
   filterBehaviours: string[];
   durFrames: number;
+  openDialog: "add" | "split" | "delete" | null;
 
   loadExperiment: (
     paths: ExperimentPaths,
@@ -115,6 +116,7 @@ interface AppState {
   splitBout: (id: number, frame: number) => void;
   deleteBout: (id: number) => void;
   addBout: (behav: string, start: number, stop: number) => void;
+  setOpenDialog: (d: "add" | "split" | "delete" | null) => void;
   interimBoutEdit: {
     boutId: number;
     start: number;
@@ -169,6 +171,7 @@ export const useStore = create<AppState>((set, get) => ({
   selectedBoutId: null,
   filterBehaviours: [],
   durFrames: 50,
+  openDialog: null,
 
   loadExperiment: (
     paths,
@@ -191,6 +194,7 @@ export const useStore = create<AppState>((set, get) => ({
       selectedBoutId: null,
       filterBehaviours: [],
       durFrames: Math.round(config.fps),
+      openDialog: null,
       featureColumns: [],
       selectedFeatureColumns: [],
       featureData: {},
@@ -253,6 +257,7 @@ export const useStore = create<AppState>((set, get) => ({
 
   setFilterBehaviours: (filterBehaviours) => set({ filterBehaviours }),
   setDurFrames: (durFrames) => set({ durFrames }),
+  setOpenDialog: (openDialog) => set({ openDialog }),
 
   splitBout: (id, frame) =>
     set((s) => {
